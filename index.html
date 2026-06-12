@@ -910,6 +910,7 @@ function cmdHelp(){
     {text:`  ${h('skills',  'c-cyan')}     ${h('→','c-muted')} ${h('Teknik beceriler','c-white')}`},
     {text:`  ${h('projects','c-cyan')}   ${h('→','c-muted')} ${h('Projelerim (ekran görüntüleriyle)','c-white')}`},
     {text:`  ${h('photo',   'c-cyan')}      ${h('→','c-muted')} ${h('Avatarım (yapay zeka)','c-white')}`},
+    {text:`  ${h('flow',    'c-cyan')}       ${h('→','c-muted')} ${h('Çalışma akışı diyagramı','c-white')}`},
     {text:`  ${h('edu',     'c-cyan')}        ${h('→','c-muted')} ${h('Eğitim geçmişi','c-white')}`},
     {text:`  ${h('contact', 'c-cyan')}    ${h('→','c-muted')} ${h('İletişim bilgileri','c-white')}`},
     {text:`  ${h('cv',      'c-cyan')}         ${h('→','c-muted')} ${h('Özgeçmiş özeti','c-white')}`},
@@ -1035,6 +1036,23 @@ function cmdPhoto(){
     appendLine(`  ${h('Yapay zeka ile üretilmiş avatar','c-muted')} ${h('· Efe Algın','c-white')}`);
     empty();
     appendLine(`  ${h('Gerçek proje görselleri için → projects','c-muted')}`);
+    empty();
+    scrollBottom();
+  });
+}
+
+function cmdFlow(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ ÇALIŞMA AKIŞI ═══════════════════════════╗</span>`},
+    {},
+    {text:`  ${h('Bu sitenin nasıl çalıştığını gösteren akış diyagramı:','c-white')}`},
+    {},
+  ], ()=>{
+    const d=document.createElement('div'); d.className='line';
+    d.innerHTML = `  <a href="images/akis.png" target="_blank" rel="noopener"><img class="term-img" style="max-width:680px" src="images/akis.png" alt="Terminal Portfolyo çalışma akışı diyagramı" loading="lazy" onerror="this.style.display='none'"></a>`;
+    term.appendChild(d);
+    appendLine(`  ${h('Boot → REPL → COMMANDS → Renderer → Oyunlar','c-muted')} ${h('· tıkla → büyüt','c-muted')}`);
     empty();
     scrollBottom();
   });
@@ -2204,7 +2222,7 @@ const COMMANDS = {
   help:cmdHelp, whoami:cmdWhoami, skills:cmdSkills, projects:cmdProjects,
   contact:cmdContact, edu:cmdEdu, ls:cmdLs, clear:cmdClear, banner:cmdBanner,
   date:cmdDate, echo:cmdEcho, sudo:cmdSudo, neofetch:cmdNeofetch, cv:cmdCv,
-  photo:cmdPhoto, learn:cmdLearn, games:cmdGames, game:cmdGame, secret:cmdSecret, chat:cmdChat,
+  photo:cmdPhoto, flow:cmdFlow, learn:cmdLearn, games:cmdGames, game:cmdGame, secret:cmdSecret, chat:cmdChat,
 };
 
 /* ════════════════════════════════════════
