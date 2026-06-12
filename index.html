@@ -150,6 +150,11 @@
     }
     #matrix-canvas.active { opacity: .35; }
 
+    /* Performans: oyun açıkken ağır arka plan efektlerini durdur */
+    html.gaming::before, html.gaming::after { animation: none !important; opacity: 0 !important; }
+    html.gaming body::before { animation: none !important; opacity: 0 !important; }
+    html.gaming #matrix-canvas { display: none !important; }
+
     /* ════════════════════════════════════════
        WINDOW CHROME
     ════════════════════════════════════════ */
@@ -1630,6 +1635,7 @@ const gLives    = document.getElementById('gh-lives');
 const gMsg      = document.getElementById('game-msg');
 const gControls = document.getElementById('gh-controls');
 
+let matrixWasActive = false;
 function openOverlay(title, controls, livesText){
   gCanvas.width  = window.innerWidth;
   gCanvas.height = window.innerHeight - 72;
@@ -1639,6 +1645,11 @@ function openOverlay(title, controls, livesText){
   gScore.textContent    = '';
   gMsg.textContent      = '';
   gOverlay.classList.add('active');
+  // Performans: oyun sırasında matrix yağmuru + ağır arka plan efektlerini durdur
+  document.documentElement.classList.add('gaming');
+  const mc = document.getElementById('matrix-canvas');
+  matrixWasActive = !!(mc && mc.classList.contains('active'));
+  if(matrixWasActive && window.__matrixStop) window.__matrixStop();
   input.blur();
 }
 
@@ -1646,6 +1657,8 @@ function closeOverlay(){
   gOverlay.classList.remove('active');
   if(gameRAF){ cancelAnimationFrame(gameRAF); gameRAF=null; }
   activeGame = null;
+  document.documentElement.classList.remove('gaming');
+  if(matrixWasActive && window.__matrixStart) window.__matrixStart();
   setTimeout(()=>input.focus(), 100);
 }
 
@@ -1769,7 +1782,7 @@ function startDash(){
         const pt=parts[i]; pt.x+=pt.vx; pt.y+=pt.vy; pt.life-=.06;
         if(pt.life<=0){parts.splice(i,1);continue;}
         ctx.save(); ctx.globalAlpha=pt.life*.5; ctx.fillStyle='#00FF41';
-        ctx.shadowBlur=5; ctx.shadowColor='#00FF41';
+        ctx.shadowBlur=0; ctx.shadowColor='#00FF41';
         ctx.fillRect(pt.x-pt.s/2,pt.y-pt.s/2,pt.s,pt.s); ctx.restore();
       }
 
@@ -1805,7 +1818,7 @@ function startDash(){
         if(dp.life<=0){deathParts.splice(i,1);continue;}
         any=true;
         ctx.save(); ctx.globalAlpha=dp.life;
-        ctx.fillStyle=dp.col; ctx.shadowBlur=12; ctx.shadowColor=dp.col;
+        ctx.fillStyle=dp.col; ctx.shadowBlur=0; ctx.shadowColor=dp.col;
         ctx.beginPath(); ctx.arc(dp.x,dp.y,dp.s,0,Math.PI*2); ctx.fill(); ctx.restore();
       }
       if(!any){
@@ -2014,7 +2027,7 @@ function startBoss(){
       // draw boss bullets
       boss.bullets.forEach(bb=>{
         ctx.save();
-        ctx.shadowBlur=10; ctx.shadowColor=barCol;
+        ctx.shadowBlur=0; ctx.shadowColor=barCol;
         ctx.fillStyle=barCol;
         ctx.beginPath(); ctx.arc(bb.x,bb.y,bb.r||5,0,Math.PI*2); ctx.fill();
         ctx.restore();
@@ -2051,7 +2064,7 @@ function startBoss(){
 
       // draw player bullets
       pl.bullets.forEach(b=>{
-        ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#00FF41';
+        ctx.save(); ctx.shadowBlur=0; ctx.shadowColor='#00FF41';
         ctx.strokeStyle='#00FF41'; ctx.lineWidth=3;
         ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x,b.y+14); ctx.stroke();
         ctx.restore();
@@ -2066,7 +2079,7 @@ function startBoss(){
       ep.x+=ep.vx; ep.y+=ep.vy; ep.vy+=.1; ep.life-=.022;
       if(ep.life<=0){expParts.splice(i,1);continue;}
       ctx.save(); ctx.globalAlpha=ep.life;
-      ctx.fillStyle=ep.col; ctx.shadowBlur=8; ctx.shadowColor=ep.col;
+      ctx.fillStyle=ep.col; ctx.shadowBlur=0; ctx.shadowColor=ep.col;
       ctx.beginPath(); ctx.arc(ep.x,ep.y,ep.s,0,Math.PI*2); ctx.fill(); ctx.restore();
     }
 
