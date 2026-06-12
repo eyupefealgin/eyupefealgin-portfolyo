@@ -541,6 +541,39 @@
     }
     #game-footer span { color: var(--neon-mid); }
     #game-footer b    { color: var(--neon-amber); text-shadow: var(--glow-amber); }
+
+    /* Çıkış butonu (mobil + masaüstü) */
+    #gh-close {
+      position: absolute; top: 7px; right: 12px; z-index: 200;
+      width: 36px; height: 36px; padding: 0;
+      background: rgba(255,49,49,.12); border: 1px solid var(--neon-red);
+      color: var(--neon-red); font-size: 18px; line-height: 1;
+      border-radius: 6px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #gh-close:hover, #gh-close:active { background: var(--neon-red); color: #fff; }
+
+    /* Dokunmatik kontroller — sadece dokunmatik cihazlarda görünür */
+    #game-overlay, #game-canvas { touch-action: none; }
+    #game-touch {
+      display: none;
+      justify-content: center; gap: 26px;
+      padding: 10px 16px 18px;
+      background: #080808; border-top: 1px solid var(--border);
+      flex-shrink: 0; touch-action: none; user-select: none;
+    }
+    .gt-btn {
+      width: 70px; height: 70px; padding: 0;
+      background: rgba(0,255,65,.08); border: 2px solid var(--neon-dim);
+      color: var(--neon-green); font-size: 26px;
+      border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      text-shadow: var(--glow-green);
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    .gt-btn:active { background: var(--neon-green); color: #000; box-shadow: var(--glow-green); }
+    .gt-act { border-color: var(--neon-amber); color: var(--neon-amber); text-shadow: var(--glow-amber); }
+    @media (pointer: coarse) { #game-touch { display: flex; } }
   </style>
 </head>
 <body>
@@ -550,6 +583,7 @@
 
 <!-- ══ GAME OVERLAY ══ -->
 <div id="game-overlay">
+  <button id="gh-close" aria-label="Çıkış" title="Çıkış">✕</button>
   <div id="game-hud">
     <span id="gh-title">NEON DASH</span>
     <span id="gh-score">0%</span>
@@ -557,9 +591,14 @@
   </div>
   <canvas id="game-canvas"></canvas>
   <div id="game-msg"></div>
+  <div id="game-touch">
+    <button id="gt-left"  class="gt-btn">◄</button>
+    <button id="gt-act"   class="gt-btn gt-act">▲</button>
+    <button id="gt-right" class="gt-btn">►</button>
+  </div>
   <div id="game-footer">
     <span id="gh-controls"><b>SPACE/↑</b> Zıpla</span>
-    <span><b>ESC</b> — Çıkış</span>
+    <span><b>ESC</b> / <b>✕</b> — Çıkış</span>
   </div>
 </div>
 
@@ -586,6 +625,9 @@
     <button class="qcmd" data-cmd="contact"  aria-label="contact komutu">contact</button>
     <button class="qcmd" data-cmd="edu"      aria-label="edu komutu">edu</button>
     <button class="qcmd" data-cmd="learn"    aria-label="learn komutu">learn</button>
+    <button class="qcmd" data-cmd="chat"     aria-label="chat komutu">chat</button>
+    <button class="qcmd" data-cmd="game 1"   aria-label="game 1 komutu">game 1</button>
+    <button class="qcmd" data-cmd="game 2"   aria-label="game 2 komutu">game 2</button>
     <button class="qcmd" data-cmd="neofetch" aria-label="neofetch komutu">neofetch</button>
     <button class="qcmd" data-cmd="clear"    aria-label="clear komutu">clear</button>
   </div>
@@ -1637,14 +1679,26 @@ const gControls = document.getElementById('gh-controls');
 
 let matrixWasActive = false;
 function openOverlay(title, controls, livesText){
-  gCanvas.width  = window.innerWidth;
-  gCanvas.height = window.innerHeight - 72;
   gTitle.textContent    = title;
   gControls.innerHTML   = controls;
   gLives.textContent    = livesText || '';
   gScore.textContent    = '';
   gMsg.textContent      = '';
   gOverlay.classList.add('active');
+  // canvas çizim tamponunu GERÇEK görünen boyuta ayarla (mobil dokunmatik çubuk dahil)
+  gCanvas.width  = gCanvas.clientWidth  || window.innerWidth;
+  gCanvas.height = gCanvas.clientHeight || (window.innerHeight - 72);
+  // Dokunmatik buton düzeni: dash → tek zıpla (▲), boss → ◄ ● ►
+  const gtL=document.getElementById('gt-left'), gtR=document.getElementById('gt-right'), gtA=document.getElementById('gt-act');
+  if(activeGame==='dash'){
+    if(gtL) gtL.style.display='none';
+    if(gtR) gtR.style.display='none';
+    if(gtA) gtA.textContent='▲';
+  } else {
+    if(gtL) gtL.style.display='';
+    if(gtR) gtR.style.display='';
+    if(gtA) gtA.textContent='●';
+  }
   // Performans: oyun sırasında matrix yağmuru + ağır arka plan efektlerini durdur
   document.documentElement.classList.add('gaming');
   const mc = document.getElementById('matrix-canvas');
@@ -1661,6 +1715,29 @@ function closeOverlay(){
   if(matrixWasActive && window.__matrixStart) window.__matrixStart();
   setTimeout(()=>input.focus(), 100);
 }
+
+/* Dokunmatik kontroller + çıkış (×) butonu — mobil oynanabilirlik */
+(function(){
+  const closeBtn=document.getElementById('gh-close');
+  if(closeBtn) closeBtn.addEventListener('click', closeOverlay);
+  function bind(el, onDown, onUp){
+    if(!el) return;
+    const down=e=>{ e.preventDefault(); onDown(); };
+    const up=e=>{ e.preventDefault(); onUp&&onUp(); };
+    el.addEventListener('touchstart', down, {passive:false});
+    el.addEventListener('touchend',   up,   {passive:false});
+    el.addEventListener('touchcancel',up,   {passive:false});
+    el.addEventListener('mousedown',  down);
+    el.addEventListener('mouseup',    up);
+    el.addEventListener('mouseleave', up);
+  }
+  bind(document.getElementById('gt-left'),  ()=>{ gKeys['ArrowLeft']=true;  }, ()=>{ gKeys['ArrowLeft']=false;  });
+  bind(document.getElementById('gt-right'), ()=>{ gKeys['ArrowRight']=true; }, ()=>{ gKeys['ArrowRight']=false; });
+  bind(document.getElementById('gt-act'),
+    ()=>{ if(activeGame==='dash'){ if(dashJump) dashJump(); } else { gKeys[' ']=true; } },
+    ()=>{ gKeys[' ']=false; }
+  );
+})();
 
 function setMsg(text, color='#00FF41'){
   gMsg.style.color = color;
