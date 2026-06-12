@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>efeal@portfolio:~$</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ════════════════════════════════════════
+       DESIGN SYSTEM — Cyberpunk / Terminal
+       Source: UI/UX Pro Max v2.5
+    ════════════════════════════════════════ */
+    :root {
+      --bg:          #0D0D0D;
+      --bg-panel:    #111111;
+      --bg-card:     #141414;
+      --neon-green:  #00FF41;
+      --neon-dim:    #00882A;
+      --neon-mid:    #00CC33;
+      --neon-cyan:   #00FFFF;
+      --neon-amber:  #FFB300;
+      --neon-red:    #FF3131;
+      --neon-purple: #BF00FF;
+      --text-white:  #E2E8F0;
+      --text-muted:  #64748B;
+      --border:      rgba(0,255,65,.18);
+      --border-bright: rgba(0,255,65,.45);
+      --glow-green:  0 0 8px rgba(0,255,65,.7), 0 0 20px rgba(0,255,65,.3);
+      --glow-cyan:   0 0 8px rgba(0,255,255,.7), 0 0 20px rgba(0,255,255,.3);
+      --glow-amber:  0 0 8px rgba(255,179,0,.7);
+      --font-mono:   'JetBrains Mono', 'Courier New', monospace;
+      --font-sans:   'IBM Plex Sans', sans-serif;
+      --anim-fast:   150ms;
+      --anim-mid:    250ms;
+      --anim-slow:   400ms;
+      --z-overlay:   9999;
+      --z-ui:        100;
+      --z-content:   10;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--neon-green);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.65;
+      overflow: hidden;
+    }
+
+    /* ── CRT Scanlines ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 2px,
+        rgba(0,0,0,.10) 2px,
+        rgba(0,0,0,.10) 4px
+      );
+      pointer-events: none;
+      z-index: var(--z-overlay);
+      animation: scanFlicker 8s step-end infinite;
+    }
+
+    /* ── Vignette ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 62%, rgba(0,0,0,.45) 100%);
+      pointer-events: none;
+      z-index: calc(var(--z-overlay) - 1);
+    }
+
+    @keyframes scanFlicker {
+      0%,97%,100% { opacity: 1; }
+      98%          { opacity: .92; }
+      99%          { opacity: .97; }
+    }
+
+    /* ── Film grain (analog doku) ── */
+    html::before {
+      content: '';
+      position: fixed;
+      inset: -10%;
+      z-index: calc(var(--z-overlay) - 3);
+      pointer-events: none;
+      opacity: .05;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 140px 140px;
+      animation: grainShift .5s steps(3) infinite;
+    }
+    @keyframes grainShift {
+      0%   { transform: translate(0, 0); }
+      33%  { transform: translate(-2%, 1.5%); }
+      66%  { transform: translate(1.5%, -2%); }
+      100% { transform: translate(-1%, -1%); }
+    }
+
+    /* ── CRT tarama hüzmesi (sweep beam) ── */
+    html::after {
+      content: '';
+      position: fixed;
+      left: 0; right: 0; top: 0;
+      height: 160px;
+      z-index: calc(var(--z-overlay) - 2);
+      pointer-events: none;
+      background: linear-gradient(180deg,
+        transparent,
+        rgba(0,255,65,.04) 46%,
+        rgba(160,255,190,.07) 50%,
+        rgba(0,255,65,.04) 54%,
+        transparent);
+      animation: sweepBeam 7s linear infinite;
+    }
+    @keyframes sweepBeam {
+      0%   { transform: translateY(-160px); }
+      100% { transform: translateY(100vh); }
+    }
+
+    /* ── Global seçim rengi ── */
+    ::selection { background: var(--neon-green); color: #000; text-shadow: none; }
+
+    /* ── Pixel-art ikonlar (iletişim simgeleri) ── */
+    .pico {
+      display: inline-block;
+      width: 14px; height: 14px;
+      vertical-align: -3px;
+      margin-right: 7px;
+      filter: drop-shadow(0 0 2px currentColor);
+    }
+
+    /* ════════════════════════════════════════
+       MATRIX RAIN CANVAS (background)
+    ════════════════════════════════════════ */
+    #matrix-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 1s ease;
+      pointer-events: none;
+    }
+    #matrix-canvas.active { opacity: .35; }
+
+    /* ════════════════════════════════════════
+       WINDOW CHROME
+    ════════════════════════════════════════ */
+    #window {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--bg);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      position: relative;
+      z-index: var(--z-ui);
+      transform-origin: center center;
+      box-shadow: 0 0 80px rgba(0,255,65,.05);
+      animation: crtPowerOn .9s cubic-bezier(.2,.85,.25,1) both;
+    }
+    /* CRT ekran eğriliği camı — kenar karartma + fosfor parıltısı */
+    #window::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 200;
+      pointer-events: none;
+      box-shadow:
+        inset 0 0 100px 8px rgba(0,0,0,.38),
+        inset 0 0 40px rgba(0,255,65,.05);
+      background: radial-gradient(120% 60% at 50% -12%, rgba(255,255,255,.05), transparent 60%);
+    }
+    @keyframes crtPowerOn {
+      0%   { transform: scale(1, .003); filter: brightness(4); opacity: 0; }
+      9%   { transform: scale(1, .003); filter: brightness(4); opacity: 1; }
+      22%  { transform: scale(1, 1);    filter: brightness(2.4); }
+      45%  { filter: brightness(1.12); }
+      100% { transform: scale(1, 1); opacity: 1; }
+    }
+
+    #titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: #0a0a0a;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .dot.r { background: #FF5F57; box-shadow: 0 0 8px rgba(255,95,87,.55); }
+    .dot.y { background: #FFBD2E; box-shadow: 0 0 8px rgba(255,189,46,.5); }
+    .dot.g { background: #28C840; box-shadow: 0 0 8px rgba(40,200,64,.55); }
+
+    #titlebar-title {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: .5px;
+    }
+    #titlebar-title span { color: var(--neon-green); text-shadow: var(--glow-green); }
+
+    /* ════════════════════════════════════════
+       TERMINAL BODY
+    ════════════════════════════════════════ */
+    #terminal {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 8px;
+      scroll-behavior: smooth;
+      position: relative;
+      z-index: var(--z-content);
+      scrollbar-width: thin;
+      scrollbar-color: var(--neon-dim) transparent;
+    }
+    #terminal::-webkit-scrollbar { width: 5px; }
+    #terminal::-webkit-scrollbar-thumb { background: var(--neon-dim); border-radius: 3px; box-shadow: 0 0 6px var(--neon-dim); }
+    #terminal::-webkit-scrollbar-thumb:hover { background: var(--neon-green); box-shadow: var(--glow-green); }
+
+    /* ════════════════════════════════════════
+       LINE TYPES
+    ════════════════════════════════════════ */
+    .line { margin-bottom: 2px; white-space: pre-wrap; word-break: break-word; }
+    .line.empty { height: 1.65em; }
+
+    /* Prompt echo */
+    .prompt-line { display: flex; align-items: baseline; gap: 0; flex-wrap: wrap; }
+    .ps1 { white-space: nowrap; }
+    .ps1 .u  { color: var(--neon-cyan);  text-shadow: var(--glow-cyan); }
+    .ps1 .at { color: var(--text-muted); }
+    .ps1 .h  { color: var(--neon-green); text-shadow: var(--glow-green); }
+    .ps1 .s  { color: var(--text-muted); }
+    .ps1 .p  { color: var(--neon-amber); text-shadow: var(--glow-amber); }
+    .ps1 .d  { color: var(--text-white); margin: 0 4px 0 2px; }
+    .cmd-echo { color: var(--text-white); }
+
+    /* Output colours */
+    .c-green  { color: var(--neon-green);  text-shadow: var(--glow-green); }
+    .c-dim    { color: var(--neon-dim); }
+    .c-mid    { color: var(--neon-mid); }
+    .c-white  { color: var(--text-white); }
+    .c-cyan   { color: var(--neon-cyan);   text-shadow: var(--glow-cyan); }
+    .c-amber  { color: var(--neon-amber);  text-shadow: var(--glow-amber); }
+    .c-red    { color: var(--neon-red); }
+    .c-purple { color: var(--neon-purple); }
+    .c-muted  { color: var(--text-muted); }
+
+    /* Section header */
+    .sec { color: var(--neon-amber); border-bottom: 1px solid var(--border-bright); padding-bottom: 2px; margin: 4px 0 8px; display: block; text-shadow: var(--glow-amber); }
+
+    /* ── ASCII Banner ── */
+    .ascii {
+      color: var(--neon-green);
+      font-size: 11.5px;
+      line-height: 1.2;
+      text-shadow: var(--glow-green);
+    }
+    @media (max-width: 640px) { .ascii { font-size: 7px; } }
+
+    /* Glitch effect on ASCII */
+    .glitch {
+      position: relative;
+      animation: glitch-base 4s infinite;
+    }
+    .glitch::before, .glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0; left: 0;
+      color: var(--neon-green);
+      font-size: inherit;
+      line-height: inherit;
+      white-space: pre-wrap;
+    }
+    .glitch::before {
+      text-shadow: -2px 0 var(--neon-cyan);
+      animation: glitch-1 4s infinite;
+      clip-path: inset(0 0 50% 0);
+    }
+    .glitch::after {
+      text-shadow: 2px 0 var(--neon-red);
+      animation: glitch-2 4s infinite;
+      clip-path: inset(50% 0 0 0);
+    }
+
+    @keyframes glitch-base { 0%,95%,100%{transform:none} 96%{transform:skewX(0.3deg)} 97%{transform:skewX(-0.3deg)} }
+    @keyframes glitch-1    { 0%,94%,100%{transform:none;opacity:0} 95%{transform:translate(-3px,1px);opacity:.8} 96%{transform:translate(2px,-1px);opacity:.5} }
+    @keyframes glitch-2    { 0%,93%,100%{transform:none;opacity:0} 94%{transform:translate(3px,-1px);opacity:.8} 95%{transform:translate(-2px,1px);opacity:.5} }
+
+    /* ── Skill bars ── */
+    .skill-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+    .skill-label { width: 170px; color: var(--text-white); flex-shrink: 0; font-size: 12.5px; }
+    .skill-bar {
+      flex: 1;
+      max-width: 210px;
+      height: 8px;
+      background: rgba(0,255,65,.08);
+      border: 1px solid var(--neon-dim);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .skill-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon-dim), var(--neon-green));
+      border-radius: 2px;
+      width: 0;
+      transition: width .8s cubic-bezier(.16,1,.3,1);
+      box-shadow: 0 0 6px rgba(0,255,65,.5);
+    }
+    .skill-pct { color: var(--neon-mid); font-size: 12px; width: 36px; flex-shrink: 0; }
+
+    /* ── Project cards ── */
+    .project-card {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      background: rgba(0,255,65,.018);
+      transition: border-color var(--anim-mid) ease, box-shadow var(--anim-mid) ease;
+      cursor: default;
+    }
+    .project-card:hover {
+      border-color: var(--border-bright);
+      box-shadow: 0 0 12px rgba(0,255,65,.12), inset 0 0 20px rgba(0,255,65,.03);
+    }
+    .project-title { color: var(--neon-cyan); font-weight: 700; text-shadow: var(--glow-cyan); }
+    .project-tech  { color: var(--neon-amber); font-size: 11.5px; margin-top: 3px; }
+    .project-desc  { color: var(--text-white); margin-top: 6px; font-size: 12.5px; line-height: 1.55; }
+    .project-tag   { font-size: 10.5px; padding: 1px 6px; border: 1px solid; border-radius: 2px; margin-left: 8px; vertical-align: middle; }
+    .tag-done    { color: var(--neon-cyan);  border-color: var(--neon-cyan); }
+    .tag-wip     { color: var(--neon-amber); border-color: var(--neon-amber); }
+    .tag-current { color: var(--neon-green); border-color: var(--neon-green); }
+
+    /* ── Görseller (proje ekran görüntüsü + CRT avatar) ── */
+    .term-img {
+      display: block;
+      max-width: 420px; width: 100%;
+      margin: 10px 0 2px;
+      border: 1px solid var(--border-bright);
+      border-radius: 4px;
+      box-shadow: 0 0 16px rgba(0,255,65,.12);
+      filter: contrast(1.03) saturate(.95);
+      transition: box-shadow var(--anim-mid), transform var(--anim-mid);
+    }
+    .term-img:hover { box-shadow: 0 0 24px rgba(0,255,65,.28); transform: translateY(-2px); }
+    .crt-frame {
+      position: relative; display: inline-block;
+      max-width: 240px; margin: 8px 0 2px;
+    }
+    .crt-frame img {
+      display: block; width: 100%;
+      border: 2px solid var(--neon-dim); border-radius: 6px;
+      box-shadow: 0 0 26px rgba(0,255,65,.28);
+    }
+    .crt-frame::after {
+      content: ''; position: absolute; inset: 0; border-radius: 6px;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.16) 2px 3px);
+    }
+
+    /* ── Blinking cursor ── */
+    @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+    .cursor {
+      display: inline-block;
+      width: 8px; height: 1em;
+      background: var(--neon-green);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+      margin-left: 1px;
+      box-shadow: var(--glow-green);
+    }
+
+    /* ── Neon flicker on boot ── */
+    @keyframes neon-in {
+      0%   { opacity:0; text-shadow: none; }
+      50%  { opacity:.5; text-shadow: var(--glow-green); }
+      75%  { opacity:.3; }
+      100% { opacity:1; text-shadow: var(--glow-green); }
+    }
+
+    /* ════════════════════════════════════════
+       INPUT ROW
+    ════════════════════════════════════════ */
+    #input-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 24px 14px;
+      flex-shrink: 0;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: var(--z-ui);
+    }
+    #input-row .ps1 { white-space: nowrap; }
+    #cmd-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-white);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      caret-color: var(--neon-green);
+      margin-left: 4px;
+    }
+    #cmd-input::selection { background: var(--neon-green); color: #000; }
+    #cmd-input::placeholder { color: #2a2a2a; }
+
+    /* ════════════════════════════════════════
+       MOBILE QUICK COMMANDS
+    ════════════════════════════════════════ */
+    #quick-cmds {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 16px;
+      background: #0a0a0a;
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: var(--z-ui);
+    }
+    .qcmd {
+      background: rgba(0,255,65,.06);
+      border: 1px solid var(--neon-dim);
+      color: var(--neon-green);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background var(--anim-fast), color var(--anim-fast), box-shadow var(--anim-fast);
+    }
+    .qcmd:hover, .qcmd:active {
+      background: var(--neon-green);
+      color: #000;
+      box-shadow: var(--glow-green);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      html, body { font-size: 13px; }
+      #quick-cmds { display: flex; }
+      #terminal { padding: 14px 14px 4px; }
+      #input-row { padding: 8px 14px 10px; }
+      .skill-label { width: 110px; }
+      .skill-bar { max-width: 120px; }
+    }
+
+    /* prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      .glitch::before, .glitch::after { animation: none; opacity: 0; }
+      .glitch { animation: none; }
+      .cursor { animation: none; opacity: 1; }
+      .skill-fill { transition: none; }
+      body::before { animation: none; }
+      #window { animation: none; }
+      html::before { animation: none; }
+      html::after { display: none; }
+    }
+
+    /* ── Neon table ── */
+    .ntbl { border-collapse: collapse; margin: 4px 0; }
+    .ntbl td { padding: 2px 16px 2px 0; vertical-align: top; }
+    .ntbl .k { color: var(--neon-amber); text-shadow: var(--glow-amber); white-space: nowrap; }
+    .ntbl .v { color: var(--text-white); }
+
+    /* ── neofetch color palette ── */
+    .pal-dot {
+      display: inline-block;
+      width: 16px; height: 12px;
+      border-radius: 2px;
+      margin-right: 3px;
+      box-shadow: 0 0 4px currentColor;
+    }
+
+    /* ════ GAME OVERLAY ════ */
+    #game-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 50000;
+      display: none;
+      flex-direction: column;
+      font-family: var(--font-mono);
+    }
+    #game-overlay.active { display: flex; }
+
+    #game-hud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px;
+      background: #080808;
+      border-bottom: 1px solid var(--border-bright);
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+    #gh-title  { color: var(--neon-cyan); text-shadow: var(--glow-cyan); font-weight: 700; }
+    #gh-score  { color: var(--neon-amber); }
+    #gh-lives  { color: var(--neon-red); letter-spacing: 4px; }
+
+    #game-canvas { flex: 1; display: block; }
+
+    #game-msg {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(18px, 3vw, 28px);
+      font-weight: 700;
+      text-align: center;
+      pointer-events: none;
+      text-shadow: 0 0 20px currentColor;
+      white-space: pre-line;
+      z-index: 100;
+    }
+
+    #game-footer {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 20px;
+      background: #080808;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    #game-footer span { color: var(--neon-mid); }
+    #game-footer b    { color: var(--neon-amber); text-shadow: var(--glow-amber); }
+  </style>
+</head>
+<body>
+
+<!-- Matrix rain canvas -->
+<canvas id="matrix-canvas"></canvas>
+
+<!-- ══ GAME OVERLAY ══ -->
+<div id="game-overlay">
+  <div id="game-hud">
+    <span id="gh-title">NEON DASH</span>
+    <span id="gh-score">0%</span>
+    <span id="gh-lives">♥ ♥ ♥</span>
+  </div>
+  <canvas id="game-canvas"></canvas>
+  <div id="game-msg"></div>
+  <div id="game-footer">
+    <span id="gh-controls"><b>SPACE/↑</b> Zıpla</span>
+    <span><b>ESC</b> — Çıkış</span>
+  </div>
+</div>
+
+<div id="window">
+  <!-- Title bar -->
+  <div id="titlebar">
+    <span class="dot r" title="Kapat"></span>
+    <span class="dot y" title="Küçült"></span>
+    <span class="dot g" title="Tam ekran"></span>
+    <span id="titlebar-title">
+      <span>efeal</span>@<span>portfolio</span>:~$ — bash — 80×24
+    </span>
+  </div>
+
+  <!-- Terminal output -->
+  <div id="terminal" role="log" aria-live="polite" aria-label="Terminal çıktısı"></div>
+
+  <!-- Mobile quick commands -->
+  <div id="quick-cmds" role="toolbar" aria-label="Hızlı komutlar">
+    <button class="qcmd" data-cmd="help"     aria-label="help komutu">help</button>
+    <button class="qcmd" data-cmd="whoami"   aria-label="whoami komutu">whoami</button>
+    <button class="qcmd" data-cmd="skills"   aria-label="skills komutu">skills</button>
+    <button class="qcmd" data-cmd="projects" aria-label="projects komutu">projects</button>
+    <button class="qcmd" data-cmd="contact"  aria-label="contact komutu">contact</button>
+    <button class="qcmd" data-cmd="edu"      aria-label="edu komutu">edu</button>
+    <button class="qcmd" data-cmd="learn"    aria-label="learn komutu">learn</button>
+    <button class="qcmd" data-cmd="neofetch" aria-label="neofetch komutu">neofetch</button>
+    <button class="qcmd" data-cmd="clear"    aria-label="clear komutu">clear</button>
+  </div>
+
+  <!-- Input -->
+  <div id="input-row">
+    <span class="ps1" aria-hidden="true">
+      <span class="u">efeal</span><span class="at">@</span><span class="h">portfolio</span><span class="s">:</span><span class="p">~</span><span class="d">$</span>
+    </span>
+    <input id="cmd-input" type="text"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+           autofocus placeholder="komut gir... ('help' ile başla)"
+           aria-label="Terminal komut girişi" />
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   MATRIX RAIN
+════════════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  let cols, drops, raf;
+  const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノABCDEFGHIJKLMNOPQRSTUVWXYZ<>{}[]|/\\=+*#@';
+  const SIZE = 14;
+
+  function resize(){
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols  = Math.floor(canvas.width / SIZE);
+    drops = Array(cols).fill(1);
+  }
+
+  function draw(){
+    ctx.fillStyle = 'rgba(13,13,13,.05)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#00FF41';
+    ctx.font = SIZE + 'px JetBrains Mono, monospace';
+    drops.forEach((y,i) => {
+      const ch = chars[Math.floor(Math.random()*chars.length)];
+      ctx.fillText(ch, i*SIZE, y*SIZE);
+      if(y*SIZE > canvas.height && Math.random()>.975) drops[i]=0;
+      drops[i]++;
+    });
+    raf = requestAnimationFrame(draw);
+  }
+
+  window.__matrixStart = function(){
+    resize();
+    canvas.classList.add('active');
+    draw();
+  };
+  window.__matrixStop = function(){
+    canvas.classList.remove('active');
+    cancelAnimationFrame(raf);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  };
+  window.addEventListener('resize', ()=>{ if(canvas.classList.contains('active')) resize(); });
+})();
+
+/* ════════════════════════════════════════
+   RENDERER
+════════════════════════════════════════ */
+const term   = document.getElementById('terminal');
+const input  = document.getElementById('cmd-input');
+
+function h(text, cls){ return `<span class="${cls}">${text}</span>`; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function copyContact(text, el){
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig = el.textContent;
+    el.textContent = 'kopyalandı!';
+    el.style.color = 'var(--neon-green)';
+    setTimeout(()=>{ el.textContent = orig; el.style.color = ''; }, 1200);
+  }).catch(()=>{});
+}
+
+function appendLine(html='', cls='c-green'){
+  const el = document.createElement('div');
+  el.className = 'line ' + cls;
+  el.innerHTML = html;
+  term.appendChild(el);
+  return el;
+}
+function empty(){ const el=document.createElement('div'); el.className='line empty'; term.appendChild(el); }
+function scrollBottom(){ term.scrollTop = term.scrollHeight; }
+
+/* Typewriter */
+function typewriteLine(text, cls, delay, cb){
+  const el = appendLine('', cls);
+  let i = 0;
+  (function tick(){
+    if(i <= text.length){
+      el.innerHTML = text.slice(0,i) + (i < text.length ? '<span class="cursor"></span>' : '');
+      i++; scrollBottom(); setTimeout(tick, delay);
+    } else { el.innerHTML = text; cb&&cb(); }
+  })();
+}
+
+/* Block printer */
+function printBlock(items, done){
+  let idx = 0;
+  function next(){
+    if(idx >= items.length){ done&&done(); scrollBottom(); return; }
+    const item = items[idx++];
+    if(item.type === 'type'){
+      typewriteLine(item.text, item.cls||'c-green', item.delay||16, next);
+    } else if(item.type === 'skill'){
+      const row = document.createElement('div');
+      row.className = 'line skill-row';
+      row.innerHTML = `<span class="skill-label">${item.label}</span>`
+        + `<span class="skill-bar"><span class="skill-fill"></span></span>`
+        + `<span class="skill-pct">${item.pct}%</span>`;
+      term.appendChild(row);
+      scrollBottom();
+      setTimeout(()=>{ row.querySelector('.skill-fill').style.width = item.pct+'%'; }, 80);
+      setTimeout(next, 50);
+    } else {
+      appendLine(item.text||'', item.cls||'c-green');
+      scrollBottom();
+      setTimeout(next, item.pause||0);
+    }
+  }
+  next();
+}
+
+/* ════════════════════════════════════════
+   ASCII BANNER
+════════════════════════════════════════ */
+const ASCII = `
+ ███████╗███████╗███████╗         █████╗ ██╗      ██████╗ ██╗███╗   ██╗
+ ██╔════╝██╔════╝██╔════╝        ██╔══██╗██║     ██╔════╝ ██║████╗  ██║
+ █████╗  █████╗  █████╗          ███████║██║     ██║  ███╗██║██╔██╗ ██║
+ ██╔══╝  ██╔══╝  ██╔══╝          ██╔══██║██║     ██║   ██║██║██║╚██╗██║
+ ███████╗██║     ███████╗        ██║  ██║███████╗╚██████╔╝██║██║ ╚████║
+ ╚══════╝╚═╝     ╚══════╝ ══════ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝`;
+
+function printBanner(){
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  const el = document.createElement('div');
+  el.className = 'line ascii glitch';
+  el.textContent = ASCII;
+  el.setAttribute('data-text', ASCII);
+  wrapper.appendChild(el);
+  term.appendChild(wrapper);
+  empty();
+}
+
+/* ════════════════════════════════════════
+   CHAT — Supabase canlı sohbet odası
+════════════════════════════════════════ */
+const SUPA_URL = 'https://rvcduanclblekyerrbot.supabase.co';
+const SUPA_KEY = 'sb_publishable_TF8BKCbvWSWVBYrmtHMxPQ_MgRpbVuh';
+let supaClient = null;
+function chatReady(){ return !!(window.supabase && SUPA_URL.startsWith('http') && SUPA_KEY.length > 20); }
+function getSupa(){ if(!supaClient && chatReady()) supaClient = window.supabase.createClient(SUPA_URL, SUPA_KEY); return supaClient; }
+
+let chatState = 'off';      // 'off' | 'nick' | 'on'
+let chatNick  = null;
+let chatChannel = null;
+let lastChatSent = 0;
+const CHAT_BADWORDS = ['orospu','piç','yarrak','siktir','amk','o.ç','göt','fuck','shit','bitch','asshole'];
+
+function censor(s){
+  let t = s;
+  CHAT_BADWORDS.forEach(w=>{
+    const re = new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+    t = t.replace(re, m=>'*'.repeat(m.length));
+  });
+  return t;
+}
+
+function cmdChat(args){
+  if(!chatReady()){
+    empty();
+    appendLine(`  ${h('[!] Chat şu an kullanılamıyor (bağlantı yok).','c-red')}`);
+    empty(); scrollBottom(); return;
+  }
+  if(chatState === 'on'){ appendLine(`  ${h('Zaten sohbet odasındasın. Çıkış: /exit','c-muted')}`); scrollBottom(); return; }
+  if(args && args[0]){ chatSetNick(args.join(' ')); return; }
+  if(chatNick){ chatJoin(); return; }
+  chatState = 'nick';
+  empty();
+  appendLine(`  ${h('╔══ CANLI SOHBET ══╗','c-cyan')}`);
+  appendLine(`  ${h("Takma adını yaz (2-16 karakter) ve Enter'a bas:",'c-amber')}`);
+  scrollBottom();
+}
+
+function chatSetNick(n){
+  n = (n||'').trim().replace(/\s+/g,'_').replace(/[^A-Za-z0-9_çğıöşüÇĞİÖŞÜ-]/g,'').slice(0,16);
+  if(n.length < 2){
+    appendLine(`  ${h('Geçersiz ad. 2-16 karakter, harf/rakam.','c-red')}`); scrollBottom(); return;
+  }
+  chatNick = n;
+  chatJoin();
+}
+
+async function chatJoin(){
+  chatState = 'on';
+  const supa = getSupa();
+  if(chatChannel){ try{ supa.removeChannel(chatChannel); }catch(e){} chatChannel=null; }
+  empty();
+  appendLine(`  ${h('╔══ CANLI SOHBET ODASI ══╗','c-cyan')}`);
+  appendLine(`  ${h('Bağlandın:','c-muted')} ${h('@'+chatNick,'c-green')}   ${h('· çıkış: /exit','c-muted')}`);
+  appendLine(`  ${h('─────────────────────────────','c-dim')}`);
+  let data = [];
+  try {
+    const res = await supa.from('messages').select('*').order('id',{ascending:true}).limit(40);
+    if(res.error) throw res.error;
+    data = res.data || [];
+  } catch(err){
+    appendLine(`  ${h('Bağlantı hatası: '+(err.message||err),'c-red')}`);
+    chatState='off'; scrollBottom(); return;
+  }
+  if(data.length===0) appendLine(`  ${h('(henüz mesaj yok — ilk mesajı sen yaz!)','c-muted')}`);
+  data.forEach(chatRender);
+  chatChannel = supa.channel('room-'+Date.now())
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, p=>chatRender(p.new))
+    .subscribe();
+  input.placeholder = "mesaj yaz...  (/exit ile çık)";
+  input.focus();
+  scrollBottom();
+}
+
+function chatLeave(){
+  if(chatState==='off') return;
+  chatState='off';
+  if(chatChannel){ try{ getSupa().removeChannel(chatChannel); }catch(e){} chatChannel=null; }
+  input.placeholder = "komut gir... ('help' ile başla)";
+  empty();
+  appendLine(`  ${h('Sohbet odasından çıktın. Tekrar girmek için: chat','c-amber')}`);
+  empty(); scrollBottom();
+}
+
+async function chatSend(text){
+  text = (text||'').trim();
+  if(!text) return;
+  if(text === '/exit' || text === '/quit'){ chatLeave(); return; }
+  if(text.length > 200) text = text.slice(0,200);
+  const now = Date.now();
+  if(now - lastChatSent < 1500){
+    appendLine(`  ${h('cok hizli — birkac saniye bekle','c-red')}`); scrollBottom(); return;
+  }
+  lastChatSent = now;
+  const body = censor(text);
+  try {
+    const { error } = await getSupa().from('messages').insert({ nick: chatNick, body });
+    if(error) throw error;
+  } catch(err){
+    appendLine(`  ${h('Gönderilemedi: '+(err.message||err),'c-red')}`); scrollBottom();
+  }
+}
+
+function chatRender(m){
+  if(!m || !m.nick) return;
+  const d = m.created_at ? new Date(m.created_at) : new Date();
+  const time = d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  const mine = (m.nick === chatNick);
+  const row = document.createElement('div');
+  row.className = 'line';
+  row.innerHTML = `  <span class="c-muted">[${time}]</span> `
+    + `<span class="${mine?'c-green':'c-cyan'}">@${esc(m.nick)}</span>`
+    + `<span class="c-muted"> › </span>`
+    + `<span class="c-white">${esc(m.body)}</span>`;
+  term.appendChild(row);
+  scrollBottom();
+}
+
+/* ════════════════════════════════════════
+   COMMANDS
+════════════════════════════════════════ */
+function cmdHelp(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ KOMUTLAR ════════════════════════════════╗</span>`},
+    {},
+    {text:`  ${h('whoami',  'c-cyan')}     ${h('→','c-muted')} ${h('Hakkımda','c-white')}`},
+    {text:`  ${h('skills',  'c-cyan')}     ${h('→','c-muted')} ${h('Teknik beceriler','c-white')}`},
+    {text:`  ${h('projects','c-cyan')}   ${h('→','c-muted')} ${h('Projelerim (ekran görüntüleriyle)','c-white')}`},
+    {text:`  ${h('photo',   'c-cyan')}      ${h('→','c-muted')} ${h('Avatarım (yapay zeka)','c-white')}`},
+    {text:`  ${h('edu',     'c-cyan')}        ${h('→','c-muted')} ${h('Eğitim geçmişi','c-white')}`},
+    {text:`  ${h('contact', 'c-cyan')}    ${h('→','c-muted')} ${h('İletişim bilgileri','c-white')}`},
+    {text:`  ${h('cv',      'c-cyan')}         ${h('→','c-muted')} ${h('Özgeçmiş özeti','c-white')}`},
+    {text:`  ${h('neofetch','c-cyan')}   ${h('→','c-muted')} ${h('Sistem bilgisi','c-white')}`},
+    {text:`  ${h('ls',      'c-cyan')}         ${h('→','c-muted')} ${h('Dizin içeriği','c-white')}`},
+    {text:`  ${h('banner',  'c-cyan')}     ${h('→','c-muted')} ${h('ASCII banner','c-white')}`},
+    {text:`  ${h('learn',   'c-cyan')}      ${h('→','c-muted')} ${h('Terminal komutlarını öğren','c-white')}`},
+    {text:`  ${h('chat',    'c-cyan')}       ${h('→','c-muted')} ${h('Canlı sohbet odası — herkesle yazış','c-green')}`},
+    {text:`  ${h('games','c-cyan')}      ${h('→','c-muted')} ${h('Mini oyunlar','c-white')}`},
+    {text:`  ${h('game 1','c-cyan')}     ${h('→','c-muted')} ${h('Neon Dash — Geometry Dash klonu','c-amber')}`},
+    {text:`  ${h('game 2','c-cyan')}     ${h('→','c-muted')} ${h('Terminal Breach — Boss dövüşü','c-red')}`},
+    {text:`  ${h('secret','c-cyan')}     ${h('→','c-muted')} ${h('??? (oyunları geçince açılır) [kilitli]','c-muted')}`},
+    {text:`  ${h('date',    'c-cyan')}       ${h('→','c-muted')} ${h('Tarih/saat','c-white')}`},
+    {text:`  ${h('echo [msg]','c-cyan')} ${h('→','c-muted')} ${h('Mesaj yazdır','c-white')}`},
+    {text:`  ${h('sudo',    'c-cyan')}       ${h('→','c-muted')} ${h('Dene bakalım...','c-white')}`},
+    {text:`  ${h('clear',   'c-cyan')}      ${h('→','c-muted')} ${h('Ekranı temizle','c-white')}`},
+    {},
+    {text:`  ${h('TAB','c-amber')} → otomatik tamamla  ${h('↑↓','c-amber')} → geçmiş  ${h('Ctrl+L','c-amber')} → temizle`},
+    {},
+  ]);
+}
+
+function cmdWhoami(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ HAKKIMDA ═══════════════════════════════╗</span>`},
+    {},
+    {text:`  ${h('İsim       :','c-amber')} ${h('Efe Algın','c-white')}`},
+    {text:`  ${h('Rol        :','c-amber')} ${h('Bilgisayar Mühendisliği Öğrencisi','c-white')}`},
+    {text:`  ${h('Üniversite :','c-amber')} ${h('Balıkesir Üniversitesi · 2. Sınıf','c-white')}`},
+    {text:`  ${h('Bölüm      :','c-amber')} ${h('Bilgisayar Mühendisliği','c-white')}`},
+    {text:`  ${h('Odak       :','c-amber')} ${h('Backend Geliştirme','c-cyan')}`},
+    {text:`  ${h('Teknoloji  :','c-amber')} ${h('C# · .NET · Python','c-white')}`},
+    {text:`  ${h('Durum      :','c-amber')} ${h('[ AKTİF — Staj arıyor ]','c-green')}`},
+    {},
+    {text:`  ${h('Merhaba! Ben Efe.','c-white')} Backend tarafında kendimi geliştiriyorum.`},
+    {text:`  ${h('Temiz mimari, verimli kod ve gerçek sorunlara','c-white')}`},
+    {text:`  ${h('yazılım çözümleri üretmek beni heyecanlandırıyor.','c-white')}`},
+    {},
+    {text:`  ${h('uid=1000(efeal) gid=1000 groups=developers,coffee-addicts','c-muted')}`},
+    {},
+  ]);
+}
+
+function cmdSkills(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ YETENEKLER ══════════════════════════════╗</span>`},
+    {},
+    {text:`  ${h('▸ Programlama Dilleri','c-amber')}`},
+    {text:`      ${h('C#','c-cyan')} ${h('·','c-muted')} ${h('Python','c-cyan')} ${h('·','c-muted')} ${h('Java','c-cyan')} ${h('·','c-muted')} ${h('PHP','c-cyan')} ${h('·','c-muted')} ${h('SQL','c-cyan')} ${h('·','c-muted')} ${h('C/C++','c-cyan')} ${h('(Temel)','c-muted')}`},
+    {},
+    {text:`  ${h('▸ Teknolojiler & Mimari','c-amber')}`},
+    {text:`      ${h('.NET Core','c-cyan')}   ${h('·','c-muted')}   ${h('REST API','c-cyan')}   ${h('·','c-muted')}   ${h('OOP','c-cyan')} ${h('(Nesne Yönelimli Programlama)','c-muted')}`},
+    {},
+    {text:`  ${h('▸ Veritabanı','c-amber')}`},
+    {text:`      ${h('MSSQL / T-SQL','c-cyan')}   ${h('·','c-muted')}   ${h('Entity Framework','c-cyan')}   ${h('·','c-muted')}   ${h('SQLite','c-cyan')}`},
+    {},
+    {text:`  ${h('▸ Web & Frontend','c-amber')}`},
+    {text:`      ${h('HTML5','c-cyan')} ${h('·','c-muted')} ${h('CSS3','c-cyan')} ${h('·','c-muted')} ${h('JavaScript','c-cyan')} ${h('·','c-muted')} ${h('React','c-cyan')}`},
+    {},
+    {text:`  ${h('▸ Araçlar','c-amber')}`},
+    {text:`      ${h('Git','c-cyan')} ${h('·','c-muted')} ${h('GitHub','c-cyan')} ${h('·','c-muted')} ${h('Visual Studio','c-cyan')} ${h('·','c-muted')} ${h('VS Code','c-cyan')} ${h('·','c-muted')} ${h('NetBeans','c-cyan')}`},
+    {},
+    {text:`  ${h('Backend ağırlıklı · sürekli öğrenmeye devam','c-muted')}`},
+    {},
+  ]);
+}
+
+function cmdProjects(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ PROJELER ════════════════════════════════╗</span>`},
+    {},
+  ], ()=>{
+    const projects = [
+      {
+        icon:CI.coffee, title:'Modern Cafe Adisyon Sistemi',
+        tech:'C# · .NET · WinForms · MSSQL · Entity Framework',
+        tag:'tamamlandı', tagCls:'tag-done',
+        img:'images/cafe.png',
+        desc:'Masaüstü tabanlı tam özellikli cafe yönetim yazılımı. Gerçek zamanlı sipariş takibi, masa yönetimi, günlük/aylık satış raporları, ürün & kategori yönetimi. Admin/kasiyer rollü şifreli giriş sistemi. Veritabanı katmanlı mimari.',
+      },
+      {
+        icon:CI.chart, title:'YZ Destekli Deprem Analiz Sistemi',
+        tech:'Python · Scikit-learn · Pandas · Matplotlib · NumPy',
+        tag:'geliştirmede', tagCls:'tag-wip',
+        img:'images/deprem.png',
+        desc:'AFAD ve USGS deprem verilerini işleyerek büyüklük tahmini yapan ML modeli. Feature engineering, cross-validation ve model karşılaştırması içerir. Türkiye fay hatları odaklı veri seti analizi ve görselleştirme pipeline\'ı.',
+      },
+      {
+        icon:CI.term, title:'Bu Terminal Portfolyo',
+        tech:'HTML5 · CSS3 (Cyberpunk UI) · Vanilla JS · UI/UX Pro Max',
+        tag:'şu an buradasın', tagCls:'tag-current',
+        desc:'Cyberpunk terminal temalı interaktif kişisel portfolyo. Neon glow efektleri, ASCII glitch animasyonu, Matrix rain easter egg, CRT scanlines, typewriter efekti, komut geçmişi & TAB tamamlama. Balıkesir Üniversitesi İnternet Programlama final ödevi.',
+      },
+    ];
+    projects.forEach(p => {
+      const c = document.createElement('div');
+      c.className = 'line project-card';
+      c.innerHTML = `<div class="project-title">${p.icon} ${p.title} <span class="project-tag ${p.tagCls}">${p.tag}</span></div>`
+        + `<div class="project-tech">// ${p.tech}</div>`
+        + `<div class="project-desc">${p.desc}</div>`
+        + (p.img ? `<a href="${p.img}" target="_blank" rel="noopener"><img class="term-img" src="${p.img}" alt="${p.title} ekran görüntüsü" loading="lazy" onerror="this.style.display='none'"></a>` : '');
+      term.appendChild(c);
+    });
+    empty();
+    appendLine(`  ${h('Daha fazlası için → contact komutu','c-muted')}`);
+    empty();
+    scrollBottom();
+  });
+}
+
+function cmdPhoto(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ AVATAR ══════════════════════════════════╗</span>`},
+    {},
+  ], ()=>{
+    const d=document.createElement('div'); d.className='line';
+    d.innerHTML = `  <span class="crt-frame"><img src="images/avatar.png" alt="Efe Algın — yapay zeka avatarı" loading="lazy" onerror="this.closest('.crt-frame').outerHTML='&nbsp;&nbsp;<span class=\\'c-muted\\'>(images/avatar.png eklenince burada görünecek)</span>'"></span>`;
+    term.appendChild(d);
+    appendLine(`  ${h('Yapay zeka ile üretilmiş avatar','c-muted')} ${h('· Efe Algın','c-white')}`);
+    empty();
+    appendLine(`  ${h('Gerçek proje görselleri için → projects','c-muted')}`);
+    empty();
+    scrollBottom();
+  });
+}
+
+/* ── Pixel-art ikon üretici (8×8 ızgara, kare-kare) ── */
+function pico(rects){
+  const r = rects.map(c=>`<rect x="${c[0]}" y="${c[1]}" width="${c[2]}" height="1"/>`).join('');
+  return `<svg class="pico" viewBox="0 0 8 8" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true">${r}</svg>`;
+}
+const CI = {
+  mail:     pico([[0,0,8],[0,1,1],[7,1,1],[0,2,2],[6,2,2],[0,3,1],[2,3,1],[5,3,1],[7,3,1],[0,4,1],[3,4,2],[7,4,1],[0,5,1],[7,5,1],[0,6,1],[7,6,1],[0,7,8]]),
+  github:   pico([[0,0,1],[7,0,1],[0,1,1],[7,1,1],[1,2,1],[6,2,1],[2,3,4],[4,4,1],[4,5,1],[3,6,3],[3,7,3]]),
+  linkedin: pico([[0,1,1],[0,3,1],[3,3,3],[0,4,1],[3,4,1],[5,4,1],[0,5,1],[3,5,1],[5,5,1],[0,6,1],[3,6,1],[5,6,1]]),
+  uni:      pico([[3,0,2],[1,1,6],[0,2,8],[1,3,6],[3,4,2],[3,5,2],[6,5,1],[6,6,1]]),
+  loc:      pico([[2,0,4],[1,1,6],[1,2,2],[5,2,2],[1,3,2],[5,3,2],[1,4,6],[2,5,4],[3,6,2],[3,7,2]]),
+  discord:  pico([[0,0,7],[0,1,1],[6,1,1],[0,2,1],[6,2,1],[0,3,1],[6,3,1],[0,4,7],[2,5,1],[1,6,1]]),
+  coffee:   pico([[2,0,1],[4,0,1],[0,2,6],[0,3,1],[5,3,3],[0,4,1],[5,4,1],[7,4,1],[0,5,1],[5,5,3],[1,6,4]]),
+  chart:    pico([[6,2,1],[2,3,1],[6,3,1],[2,4,1],[4,4,1],[6,4,1],[0,5,1],[2,5,1],[4,5,1],[6,5,1],[0,6,1],[2,6,1],[4,6,1],[6,6,1],[0,7,8]]),
+  term:     pico([[0,0,8],[0,1,1],[7,1,1],[0,2,2],[7,2,1],[0,3,1],[2,3,1],[7,3,1],[0,4,2],[4,4,2],[7,4,1],[0,5,1],[7,5,1],[0,6,8]]),
+};
+
+function cmdContact(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ İLETİŞİM ════════════════════════════════╗</span>`},
+    {},
+    {text:`  <span class="c-amber">${CI.mail}E-posta   :</span> <span class="c-cyan" style="text-decoration:underline;cursor:pointer" onclick="copyContact('efealginn@gmail.com',this)">efealginn@gmail.com</span> ${h('(tıkla → kopyala)','c-muted')}`},
+    {text:`  <span class="c-amber">${CI.github}GitHub    :</span> <a href="https://github.com/eyupefealgin" target="_blank" rel="noopener" class="c-cyan" style="text-decoration:underline;cursor:pointer">github.com/eyupefealgin</a>`},
+    {text:`  <span class="c-amber">${CI.linkedin}LinkedIn  :</span> <a href="https://www.linkedin.com/in/ey%C3%BCpefealg%C4%B1n/" target="_blank" rel="noopener" class="c-cyan" style="text-decoration:underline;cursor:pointer">linkedin.com/in/eyüpefealgın</a>`},
+    {text:`  <span class="c-amber">${CI.uni}Üniversite:</span> ${h('Balıkesir Üniversitesi, Müh. Fak.','c-white')}`},
+    {text:`  <span class="c-amber">${CI.loc}Konum     :</span> ${h('Balıkesir, Türkiye','c-white')}`},
+    {},
+    {text:`  ${h('İş birliği, staj teklifleri veya selamlaşmak','c-white')}`},
+    {text:`  ${h('için her zaman yazabilirsiniz.','c-white')}`},
+    {},
+    {text:`  ${h('[ Yanıt süresi: ~24 saat ]','c-muted')}`},
+    {},
+  ]);
+}
+
+function cmdEdu(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ EĞİTİM ══════════════════════════════════╗</span>`},
+    {},
+    {text:`  ${h('▸ Balıkesir Üniversitesi','c-amber')}`},
+    {text:`     ${h('Bilgisayar Mühendisliği · Lisans','c-white')}`},
+    {text:`     ${h('2023 – Devam ediyor · 2. Sınıf','c-muted')}`},
+    {},
+    {text:`  ${h('▸ Tamamlanan Dersler','c-amber')}`},
+    {text:`     ${h('•','c-green')} ${h('Nesne Yönelimli Programlama (C#)','c-white')}`},
+    {text:`     ${h('•','c-green')} ${h('Veri Yapıları ve Algoritmalar','c-white')}`},
+    {text:`     ${h('•','c-green')} ${h('Veritabanı Yönetim Sistemleri','c-white')}`},
+    {text:`     ${h('•','c-green')} ${h('İnternet Programlama','c-cyan')} ${h('← (bu ödev!)','c-amber')}`},
+    {text:`     ${h('•','c-green')} ${h('Diferansiyel Denklemler · Lineer Cebir','c-white')}`},
+    {text:`     ${h('•','c-green')} ${h('Yapay Zeka Temelleri','c-white')}`},
+    {},
+    {text:`  ${h('▸ Hedefler','c-amber')}`},
+    {text:`     ${h('•','c-green')} ${h('Backend mühendisi olarak kariyer','c-white')}`},
+    {text:`     ${h('•','c-green')} ${h('.NET / Python ekosisteminde uzmanlaşma','c-white')}`},
+    {text:`     ${h('•','c-green')} ${h('Açık kaynak katkıları','c-white')}`},
+    {text:`     ${h('•','c-green')} ${h('Staj → Full-time pozisyon','c-white')}`},
+    {},
+  ]);
+}
+
+function cmdLs(){
+  printBlock([
+    {},{},
+    {text:`${h('drwxr-xr-x','c-cyan')}  ${h('projects/','c-white')}    ${h('→ yazılım projeleri','c-muted')}`},
+    {text:`${h('drwxr-xr-x','c-cyan')}  ${h('skills/','c-white')}      ${h('→ teknik beceriler','c-muted')}`},
+    {text:`${h('drwxr-xr-x','c-cyan')}  ${h('education/','c-white')}   ${h('→ eğitim bilgileri','c-muted')}`},
+    {text:`${h('-rw-r--r--','c-cyan')}  ${h('whoami.txt','c-white')}   ${h('→ kişisel bilgiler','c-muted')}`},
+    {text:`${h('-rw-r--r--','c-cyan')}  ${h('contact.cfg','c-white')}  ${h('→ iletişim','c-muted')}`},
+    {text:`${h('-rw-r--r--','c-cyan')}  ${h('cv.pdf','c-white')}       ${h('→ özgeçmiş (2026)','c-muted')}`},
+    {text:`${h('-rwx------','c-red')}   ${h('secrets.enc','c-white')}  ${h('→ Permission denied','c-muted')}`},
+    {},
+  ]);
+}
+
+function cmdClear(){ term.innerHTML = ''; }
+/* ── banner [yazı] → kullanıcının yazısından ASCII üretir (5 satırlık blok font) ── */
+const BANNER_FONT = {
+  'A':[" ██ ","█  █","████","█  █","█  █"],
+  'B':["███ ","█  █","███ ","█  █","███ "],
+  'C':[" ███","█   ","█   ","█   "," ███"],
+  'D':["███ ","█  █","█  █","█  █","███ "],
+  'E':["████","█   ","███ ","█   ","████"],
+  'F':["████","█   ","███ ","█   ","█   "],
+  'G':[" ███","█   ","█ ██","█  █"," ███"],
+  'H':["█  █","█  █","████","█  █","█  █"],
+  'I':["███"," █ "," █ "," █ ","███"],
+  'J':["  ██","   █","   █","█  █"," ██ "],
+  'K':["█  █","█ █ ","██  ","█ █ ","█  █"],
+  'L':["█   ","█   ","█   ","█   ","████"],
+  'M':["█   █","██ ██","█ █ █","█   █","█   █"],
+  'N':["█  █","██ █","█ ██","█  █","█  █"],
+  'O':[" ██ ","█  █","█  █","█  █"," ██ "],
+  'P':["███ ","█  █","███ ","█   ","█   "],
+  'Q':[" ██ ","█  █","█  █","█ ██"," ███"],
+  'R':["███ ","█  █","███ ","█ █ ","█  █"],
+  'S':[" ███","█   "," ██ ","   █","███ "],
+  'T':["███"," █ "," █ "," █ "," █ "],
+  'U':["█  █","█  █","█  █","█  █"," ██ "],
+  'V':["█  █","█  █","█  █"," ██ "," ██ "],
+  'W':["█   █","█   █","█ █ █","██ ██","█   █"],
+  'X':["█ █","█ █"," █ ","█ █","█ █"],
+  'Y':["█ █","█ █"," █ "," █ "," █ "],
+  'Z':["████","  █ "," █  ","█   ","████"],
+  '0':[" ██ ","█  █","█  █","█  █"," ██ "],
+  '1':[" █ ","██ "," █ "," █ ","███"],
+  '2':["███ ","   █"," ██ ","█   ","████"],
+  '3':["███ ","   █"," ██ ","   █","███ "],
+  '4':["█  █","█  █","████","   █","   █"],
+  '5':["████","█   ","███ ","   █","███ "],
+  '6':[" ███","█   ","███ ","█  █"," ██ "],
+  '7':["████","   █","  █ "," █  "," █  "],
+  '8':[" ██ ","█  █"," ██ ","█  █"," ██ "],
+  '9':[" ██ ","█  █"," ███","   █","███ "],
+  ' ':["  ","  ","  ","  ","  "],
+};
+function makeBanner(text){
+  const tr={'Ç':'C','Ğ':'G','İ':'I','Ö':'O','Ş':'S','Ü':'U'};
+  let t = text.toUpperCase().replace(/[ÇĞİÖŞÜ]/g,m=>tr[m]).replace(/[^A-Z0-9 ]/g,'');
+  if(t.length>14) t = t.slice(0,14);
+  if(!t.trim()) return null;
+  const rows=['','','','',''];
+  for(const ch of t){
+    const g = BANNER_FONT[ch] || BANNER_FONT[' '];
+    for(let r=0;r<5;r++) rows[r] += g[r] + ' ';
+  }
+  return rows.join('\n');
+}
+function printTextBanner(text){
+  const art = makeBanner(text);
+  empty();
+  if(!art){
+    appendLine(`  ${h('Banner için harf veya rakam gir.  Örn: banner EFE','c-red')}`);
+    empty(); scrollBottom(); return;
+  }
+  const el = document.createElement('div');
+  el.className = 'line ascii';
+  el.style.whiteSpace = 'pre';
+  el.style.overflowX  = 'auto';
+  el.textContent = art;
+  term.appendChild(el);
+  empty();
+  appendLine(`  ${h("↑ senin banner'ın! Varsayılana dönmek için: banner",'c-muted')}`);
+  empty(); scrollBottom();
+}
+function cmdBanner(args){
+  if(args && args.length){
+    printTextBanner(args.join(' '));
+  } else {
+    printBanner();
+    appendLine(`  ${h('İpucu: banner <yazı>  →  kendi yazını ASCII banner yap','c-muted')}`);
+    empty(); scrollBottom();
+  }
+}
+
+function cmdDate(){
+  empty();
+  appendLine('  '+h(new Date().toLocaleDateString('tr-TR',{
+    weekday:'long',year:'numeric',month:'long',day:'numeric',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short'
+  }),'c-white'));
+  empty();
+}
+
+function cmdEcho(args){
+  const msg = args.join(' ');
+  empty();
+  appendLine('  '+h(esc(msg)||'','c-white'));
+  empty();
+}
+
+let matrixOn = false;
+function cmdMatrix(){
+  if(!matrixOn){
+    matrixOn = true;
+    window.__matrixStart();
+    printBlock([
+      {},
+      {text:`  ${h('Matrix modu aktif — yeniden girmek için: matrix','c-green')}`, type:'type', delay:22},
+      {text:`  ${h('[ Ctrl+M ile kapatabilirsiniz ]','c-muted')}`},
+      {},
+    ]);
+  } else {
+    matrixOn = false;
+    window.__matrixStop();
+    printBlock([
+      {},
+      {text:`  ${h('Matrix modu kapatıldı.','c-amber')}`},
+      {},
+    ]);
+  }
+}
+
+function cmdSudo(){
+  printBlock([
+    {},
+    {text:`  ${h('[sudo] efeal için parola:','c-red')}`, type:'type', delay:35},
+  ], ()=>{
+    setTimeout(()=>{
+      appendLine(`  ${h('efeal is not in the sudoers file.','c-red')}`);
+      appendLine(`  ${h('Bu olay bildirildi. (kahve iç, sakin ol)','c-muted')}`);
+      empty();
+      scrollBottom();
+    }, 900);
+  });
+}
+
+function cmdNeofetch(){
+  const logo = [
+    '          .         ',
+    '         /|\\        ',
+    '        /_|_\\       ',
+    '       // | \\\\      ',
+    '      //  |  \\\\     ',
+    '     //___|___\\\\    ',
+    '          |         ',
+    '    efealOS  2.0    ',
+  ];
+  const info = [
+    ['OS',      'efealOS 2.0 — Balıkesir Edition'],
+    ['Host',    'Bilgisayar Mühendisliği · BAÜ'],
+    ['Kernel',  'brain-5.23-lts (backend-focused)'],
+    ['Uptime',  '2 yıl öğrencilik, 0 downtime'],
+    ['Shell',   'bash-portfolio 2.0'],
+    ['CPU',     'Intel i5 + 3 kupa kahve/gün'],
+    ['Memory',  '%90 Chrome sekmeleri · %10 kod'],
+    ['Langs',   'C# · Python · SQL · HTML/CSS/JS'],
+    ['Theme',   'Cyberpunk Terminal (dark)'],
+  ];
+  empty();
+  const maxL = Math.max(logo.length, info.length);
+  for(let i=0; i<maxL; i++){
+    const l = logo[i]
+      ? `<span style="color:var(--neon-green);text-shadow:var(--glow-green);font-size:12.5px">${logo[i]}</span>`
+      : `<span style="font-size:12.5px">${'&nbsp;'.repeat(20)}</span>`;
+    const r = info[i]
+      ? `  ${h(info[i][0],'c-amber')}<span class="c-muted"> = </span>${h(info[i][1],'c-white')}`
+      : '';
+    appendLine(l + r);
+  }
+  empty();
+  // Color palette
+  const pal = document.createElement('div');
+  pal.className = 'line';
+  pal.style.paddingLeft = '22px';
+  const colors = [
+    {c:'#FF5F57',label:'red'},
+    {c:'#FFBD2E',label:'amber'},
+    {c:'#28C840',label:'green'},
+    {c:'#00FF41',label:'neon'},
+    {c:'#00FFFF',label:'cyan'},
+    {c:'#BF00FF',label:'purple'},
+  ];
+  pal.innerHTML = '&nbsp;'.repeat(20) + '  '
+    + colors.map(x=>`<span class="pal-dot" style="background:${x.c};color:${x.c}" title="${x.label}"></span>`).join('');
+  term.appendChild(pal);
+  empty();
+  scrollBottom();
+}
+
+function cmdCv(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ ÖZGEÇMİŞ ÖZETİ ═══════════════════════╗</span>`},
+    {},
+    {text:`  ${h('EFE ALGIN','c-green')} ${h('· Backend Developer · Öğrenci','c-muted')}`},
+    {},
+    {text:`  ${h('ÖZET','c-amber')}`},
+    {text:`  ${h('BAÜ Bilgisayar Mühendisliği 2. sınıf öğrencisi.','c-white')}`},
+    {text:`  ${h('C#, .NET ve Python ile backend sistemleri geliştiriyorum.','c-white')}`},
+    {},
+    {text:`  ${h('PROJELER','c-amber')}`},
+    {text:`  ${h('•','c-green')} ${h('Modern Cafe Adisyon Sistemi','c-white')}  ${h('(C# / .NET / MSSQL)','c-muted')}`},
+    {text:`  ${h('•','c-green')} ${h('YZ Destekli Deprem Analizi','c-white')}   ${h('(Python / ML)','c-muted')}`},
+    {text:`  ${h('•','c-green')} ${h('Terminal Portfolyo','c-white')}           ${h('(HTML/CSS/JS — Cyberpunk)','c-muted')}`},
+    {},
+    {text:`  ${h('EĞİTİM','c-amber')}`},
+    {text:`  ${h('•','c-green')} ${h('BAÜ Bilgisayar Mühendisliği','c-white')} ${h('(2023 – devam)','c-muted')}`},
+    {},
+    {text:`  ${h('Tam CV: efealginn@gmail.com','c-muted')}`},
+    {},
+  ]);
+}
+
+function cmdNotFound(cmd){
+  empty();
+  appendLine(`  ${h('bash: '+esc(cmd)+': komut bulunamadı','c-red')}`);
+  appendLine(`  ${h("Kullanılabilir komutlar için 'help' yaz",'c-muted')}`);
+  empty();
+}
+
+/* ════════════════════════════════════════
+   LEARN COMMAND — Terminal Öğreticisi
+════════════════════════════════════════ */
+const LEARN_DATA = {
+  pwd: {
+    title: 'pwd — Print Working Directory',
+    desc:  'Şu an hangi klasörde olduğunu gösterir.',
+    syntax: 'pwd',
+    example: [
+      { prompt: true,  text: 'pwd' },
+      { prompt: false, text: '/home/efeal/projeler' },
+    ],
+    tip: 'Kaybolduğunda ilk çalıştırman gereken komut!',
+  },
+  ls: {
+    title: 'ls — List Directory Contents',
+    desc:  'Bulunduğun klasördeki dosya ve klasörleri listeler.',
+    syntax: 'ls [seçenekler] [dizin]',
+    example: [
+      { prompt: true,  text: 'ls' },
+      { prompt: false, text: 'index.html   style.css   app.js   README.md' },
+      { prompt: true,  text: 'ls -la' },
+      { prompt: false, text: 'drwxr-xr-x  efeal  projeler/\n-rw-r--r--  efeal  index.html' },
+    ],
+    tip: '"-la" ile gizli dosyaları ve izinleri de görebilirsin.',
+    flags: ['-l → detaylı liste', '-a → gizli dosyaları göster', '-h → okunabilir boyut'],
+  },
+  cd: {
+    title: 'cd — Change Directory',
+    desc:  'Klasör değiştirir. Terminalin en temel gezinme komutu.',
+    syntax: 'cd [dizin]',
+    example: [
+      { prompt: true,  text: 'cd projeler/' },
+      { prompt: true,  text: 'cd ..' },
+      { prompt: false, text: '(bir üst klasöre çıkar)' },
+      { prompt: true,  text: 'cd ~' },
+      { prompt: false, text: '(home klasörüne döner)' },
+    ],
+    tip: '"cd -" ile bir önceki klasöre hızlıca dönebilirsin.',
+    flags: ['. → bulunduğun klasör', '.. → üst klasör', '~ → home klasörü', '/ → kök dizin'],
+  },
+  mkdir: {
+    title: 'mkdir — Make Directory',
+    desc:  'Yeni klasör oluşturur.',
+    syntax: 'mkdir [seçenekler] klasör_adı',
+    example: [
+      { prompt: true,  text: 'mkdir yeni-proje' },
+      { prompt: true,  text: 'mkdir -p src/components/ui' },
+      { prompt: false, text: '(iç içe klasörleri tek seferde oluşturur)' },
+    ],
+    tip: '"-p" ile birden fazla iç içe klasörü tek komutla yapabilirsin.',
+  },
+  touch: {
+    title: 'touch — Create Empty File',
+    desc:  'Boş dosya oluşturur. Var olan dosyanın güncelleme zamanını değiştirir.',
+    syntax: 'touch dosya_adı',
+    example: [
+      { prompt: true,  text: 'touch index.html' },
+      { prompt: true,  text: 'touch style.css app.js README.md' },
+      { prompt: false, text: '(birden fazla dosya aynı anda)' },
+    ],
+    tip: 'Hızlı dosya oluşturmak için en pratik komut!',
+  },
+  cat: {
+    title: 'cat — Concatenate & Display',
+    desc:  'Dosya içeriğini terminale yazdırır. Birden fazla dosyayı birleştirebilir.',
+    syntax: 'cat [seçenekler] dosya',
+    example: [
+      { prompt: true,  text: 'cat index.html' },
+      { prompt: false, text: '<!DOCTYPE html>\n<html>...</html>' },
+      { prompt: true,  text: 'cat a.txt b.txt > birlesik.txt' },
+      { prompt: false, text: '(iki dosyayı birleştirip yenisine yazar)' },
+    ],
+    tip: 'Uzun dosyalar için "less" veya "more" komutunu kullan.',
+  },
+  rm: {
+    title: 'rm — Remove Files',
+    desc:  'Dosya veya klasör siler. DİKKAT: Geri dönüşüm kutusu yok!',
+    syntax: 'rm [seçenekler] dosya',
+    example: [
+      { prompt: true,  text: 'rm gereksiz.txt' },
+      { prompt: true,  text: 'rm -r eski-proje/' },
+      { prompt: false, text: '(klasörü içindekilerle siler)' },
+    ],
+    tip: '"rm -rf /" komutunu ASLA çalıştırma — sistemi siler!',
+    flags: ['-r → klasörü recursive sil', '-f → onay sormadan sil', '-i → her silme için onay sor'],
+  },
+  cp: {
+    title: 'cp — Copy',
+    desc:  'Dosya veya klasör kopyalar.',
+    syntax: 'cp [seçenekler] kaynak hedef',
+    example: [
+      { prompt: true,  text: 'cp index.html index-yedek.html' },
+      { prompt: true,  text: 'cp -r proje/ proje-yedek/' },
+    ],
+    tip: '"-r" olmadan klasör kopyalayamazsın.',
+  },
+  mv: {
+    title: 'mv — Move / Rename',
+    desc:  'Dosya taşır veya yeniden adlandırır.',
+    syntax: 'mv kaynak hedef',
+    example: [
+      { prompt: true,  text: 'mv eski-ad.txt yeni-ad.txt' },
+      { prompt: false, text: '(yeniden adlandırma)' },
+      { prompt: true,  text: 'mv dosya.txt /home/efeal/belgeler/' },
+      { prompt: false, text: '(taşıma)' },
+    ],
+    tip: 'Taşıma ve yeniden adlandırma aynı komut!',
+  },
+  grep: {
+    title: 'grep — Search Text',
+    desc:  'Dosya içinde metin arar. Regex desteği var.',
+    syntax: 'grep [seçenekler] "aranan" dosya',
+    example: [
+      { prompt: true,  text: 'grep "TODO" app.js' },
+      { prompt: false, text: 'app.js:42:  // TODO: bu kısmı düzelt' },
+      { prompt: true,  text: 'grep -r "hata" logs/' },
+      { prompt: false, text: '(tüm klasörde arar)' },
+    ],
+    tip: '"-i" ile büyük/küçük harf duyarsız arama yapabilirsin.',
+    flags: ['-i → case insensitive', '-r → recursive arama', '-n → satır numarası göster', '-c → eşleşme sayısını göster'],
+  },
+  pipe: {
+    title: '| — Pipe Operatörü',
+    desc:  'Bir komutun çıktısını başka bir komuta giriş olarak verir.',
+    syntax: 'komut1 | komut2',
+    example: [
+      { prompt: true,  text: 'ls -la | grep ".js"' },
+      { prompt: false, text: '(sadece .js dosyalarını listeler)' },
+      { prompt: true,  text: 'cat log.txt | grep "ERROR" | wc -l' },
+      { prompt: false, text: '42\n(log dosyasındaki hata sayısı)' },
+    ],
+    tip: 'Pipe\'ları zincirleyerek güçlü komutlar kurabilirsin!',
+  },
+  redirect: {
+    title: '> ve >> — Yönlendirme',
+    desc:  'Komut çıktısını dosyaya yönlendirir.',
+    syntax: 'komut > dosya   veya   komut >> dosya',
+    example: [
+      { prompt: true,  text: 'echo "merhaba" > selamlama.txt' },
+      { prompt: false, text: '(dosyayı sıfırdan yazar)' },
+      { prompt: true,  text: 'echo "tekrar" >> selamlama.txt' },
+      { prompt: false, text: '(dosyanın sonuna ekler)' },
+    ],
+    tip: '">" dosyayı silip yeniden yazar, ">>" sonuna ekler.',
+  },
+  chmod: {
+    title: 'chmod — Change File Mode',
+    desc:  'Dosya izinlerini değiştirir. Linux\'ta her dosyanın okuma/yazma/çalıştırma izinleri var.',
+    syntax: 'chmod [izin] dosya',
+    example: [
+      { prompt: true,  text: 'chmod +x script.sh' },
+      { prompt: false, text: '(çalıştırılabilir yapar)' },
+      { prompt: true,  text: 'chmod 755 script.sh' },
+      { prompt: false, text: 'rwxr-xr-x (sahibi her şey, diğerleri okur/çalıştırır)' },
+    ],
+    tip: '755 = rwxr-xr-x, 644 = rw-r--r--. En yaygın değerler bunlar.',
+  },
+  git: {
+    title: 'git — Version Control',
+    desc:  'Kod versiyonlama sistemi. Değişiklikleri takip eder, ekip çalışmasını sağlar.',
+    syntax: 'git [komut] [seçenekler]',
+    example: [
+      { prompt: true,  text: 'git init' },
+      { prompt: false, text: '(yeni repo başlatır)' },
+      { prompt: true,  text: 'git add .' },
+      { prompt: false, text: '(tüm değişiklikleri stage\'e ekler)' },
+      { prompt: true,  text: 'git commit -m "ilk commit"' },
+      { prompt: false, text: '[main abc1234] ilk commit' },
+      { prompt: true,  text: 'git push origin main' },
+      { prompt: false, text: "(GitHub'a gönderir)" },
+    ],
+    tip: 'Her proje başında "git init" çalıştır!',
+  },
+};
+
+function cmdLearn(args){
+  if(!args.length){
+    // Ana menü
+    printBlock([
+      {},{},
+      {text:`<span class="sec">  ╔══ TERMİNAL ÖĞRETİCİ ══════════════════════╗</span>`},
+      {},
+      {text:`  ${h('▸ Terminal nedir?','c-amber')}`},
+      {text:`    ${h('Bilgisayara fareyle değil,','c-white')} ${h('klavyeyle yazarak','c-green')}`},
+      {text:`    ${h('komut verdiğin metin ekranı. Fareyle 10 tıkla','c-white')}`},
+      {text:`    ${h('yapılan işi tek satırla, çok daha hızlı yaparsın.','c-white')}`},
+      {},
+      {text:`  ${h('▸ Ne işe yarar?','c-amber')}`},
+      {text:`    ${h('Dosya yönetimi, program kurma, git, sunucu...','c-white')}`},
+      {text:`    ${h('Bir yazılımcının günlük işinin çoğu burada döner.','c-white')}`},
+      {},
+      {text:`  ${h('▸ Komut nasıl çalışır?','c-amber')}`},
+      {text:`    ${h('komut','c-cyan')} ${h('seçenek','c-amber')} ${h('hedef','c-green')}    ${h('örnek:','c-muted')} ${h('ls -la /home','c-white')}`},
+      {text:`    ${h('Yaz → Enter\'a bas → sonucu anında gör.','c-muted')}`},
+      {},
+      {text:`  ${h('── OLMAZSA OLMAZ KOMUTLAR ───────────────','c-amber')}`},
+      {text:`  ${h('detay için:','c-muted')} ${h('learn [komut]','c-cyan')}   ${h('örn:','c-muted')} ${h('learn cd','c-green')}`},
+      {},
+      {text:`  ${h('Gezinme','c-green')}`},
+      {text:`    ${h('pwd','c-cyan')}   ${h('→','c-muted')} neredeyim?  (bulunduğun klasör)`},
+      {text:`    ${h('ls','c-cyan')}    ${h('→','c-muted')} burada ne var?  (içeriği listele)`},
+      {text:`    ${h('cd','c-cyan')}    ${h('→','c-muted')} klasör değiştir  (gezin)`},
+      {},
+      {text:`  ${h('Dosya','c-green')}`},
+      {text:`    ${h('touch','c-cyan')} ${h('→','c-muted')} boş dosya oluştur`},
+      {text:`    ${h('mkdir','c-cyan')} ${h('→','c-muted')} klasör oluştur`},
+      {text:`    ${h('cat','c-cyan')}   ${h('→','c-muted')} dosya içeriğini oku`},
+      {text:`    ${h('cp','c-cyan')}    ${h('→','c-muted')} kopyala`},
+      {text:`    ${h('mv','c-cyan')}    ${h('→','c-muted')} taşı / yeniden adlandır`},
+      {text:`    ${h('rm','c-cyan')}    ${h('→','c-muted')} sil  ${h('(geri dönüşü yok, dikkat!)','c-red')}`},
+      {},
+      {text:`  ${h('Güç komutları','c-green')}`},
+      {text:`    ${h('grep','c-cyan')}     ${h('→','c-muted')} metin/kelime ara`},
+      {text:`    ${h('pipe','c-cyan')}     ${h('→','c-muted')} komutları zincirle  ( | )`},
+      {text:`    ${h('redirect','c-cyan')} ${h('→','c-muted')} çıktıyı dosyaya yaz  ( > )`},
+      {text:`    ${h('chmod','c-cyan')}    ${h('→','c-muted')} dosya izinleri`},
+      {text:`    ${h('git','c-cyan')}      ${h('→','c-muted')} kod versiyonlama  (olmazsa olmaz)`},
+      {},
+      {text:`  ${h('[i]','c-amber')} ${h('Komutlar İngilizce kısaltmadır:','c-white')}`},
+      {text:`      ${h('ls','c-cyan')}=list · ${h('cd','c-cyan')}=change directory · ${h('pwd','c-cyan')}=print working dir`},
+      {text:`  ${h('[i]','c-amber')} ${h('Takıldın mı?','c-white')} ${h('komut --help','c-green')} ${h('ya da','c-muted')} ${h('man komut','c-green')}`},
+      {},
+      {text:`  ${h('İlk adımı at →','c-muted')} ${h('learn ls','c-green')}`},
+      {},
+    ]);
+    return;
+  }
+
+  const topic = args[0].toLowerCase();
+  const data  = LEARN_DATA[topic];
+
+  if(!data){
+    empty();
+    appendLine(`  ${h('Konu bulunamadı: '+esc(topic),'c-red')}`);
+    appendLine(`  ${h("Mevcut konular için 'learn' yaz",'c-muted')}`);
+    empty();
+    return;
+  }
+
+  // Başlık
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ ${data.title.toUpperCase()} ╗</span>`},
+    {},
+    {text:`  ${h('Açıklama :','c-amber')} ${h(data.desc,'c-white')}`},
+    {text:`  ${h('Sözdizimi :','c-amber')} ${h(data.syntax,'c-cyan')}`},
+    {},
+  ], ()=>{
+    // Örnek satırlar
+    appendLine(`  ${h('── Örnek ────────────────────────────────','c-amber')}`);
+    data.example.forEach(ex => {
+      if(ex.prompt){
+        const row = document.createElement('div');
+        row.className = 'line prompt-line';
+        row.innerHTML = `  <span class="ps1"><span class="u">efeal</span><span class="at">@</span><span class="h">portfolio</span><span class="s">:</span><span class="p">~</span><span class="d">$</span></span> <span class="c-white">${esc(ex.text)}</span>`;
+        term.appendChild(row);
+      } else {
+        ex.text.split('\n').forEach(line => appendLine(`  ${h(esc(line),'c-dim')}`));
+      }
+    });
+    // Flag'ler
+    if(data.flags){
+      empty();
+      appendLine(`  ${h('── Sık Kullanılan Bayraklar ─────────────','c-amber')}`);
+      data.flags.forEach(f => appendLine(`  ${h('  '+f,'c-white')}`));
+    }
+    // İpucu
+    empty();
+    appendLine(`  ${h('[i] İpucu:','c-amber')} ${h(data.tip,'c-white')}`);
+    empty();
+    appendLine(`  ${h('Diğer konular için: learn','c-muted')}`);
+    empty();
+    scrollBottom();
+  });
+}
+
+/* ════════════════════════════════════════
+   GAME COMMANDS
+════════════════════════════════════════ */
+function cmdGames(){
+  printBlock([
+    {},{},
+    {text:`<span class="sec">  ╔══ MİNİ OYUNLAR ════════════════════════════╗</span>`},
+    {},
+    {text:`  ${h('game 1','c-cyan')}  ${h('→','c-muted')} ${h('NEON DASH','c-amber')}  — Geometry Dash klonu`},
+    {text:`         ${h('Engelleri atla · 35 sn hayatta kal','c-muted')}`},
+    {text:`         ${h('SPACE/↑ = zıpla  |  Tek can','c-white')}`},
+    {},
+    {text:`  ${h('game 2','c-cyan')}  ${h('→','c-muted')} ${h('TERMINAL BREACH','c-red')} — Boss dövüşü`},
+    {text:`         ${h('Boss\'u 3 fazda yık · 3 can','c-muted')}`},
+    {text:`         ${h('← → = hareket  |  SPACE = ateş','c-white')}`},
+    {},
+    {text:`  ${beaten.dash && beaten.boss ? h('secret  → Özel erişim AÇIK!','c-green') : h('Her iki oyunu geç → secret komutu açılır [kilitli]','c-muted')}`},
+    {},
+  ]);
+}
+
+function cmdSecret(){
+  if(!beaten.dash || !beaten.boss){
+    empty();
+    appendLine(`  ${h('[!] secret: erişim reddedildi','c-red')}`);
+    appendLine(`  ${h('Her iki mini oyunu da geç, sonra tekrar dene.','c-muted')}`);
+    empty();
+    return;
+  }
+  printBlock([
+    {},{},
+    {text:`<span class="sec" style="color:var(--neon-purple)">  ╔══ GİZLİ ERİŞİM AÇILDI ════════════════╗</span>`},
+    {},
+    {text:`  ${h('Tebrikler!','c-green')} Her iki oyunu da geçtin — çok az kişi başardı.`},
+    {},
+    {text:`  ${h('Sana özel bir ERİŞİM KODUN var:','c-white')}`},
+    {},
+    {text:`     <span style="background:rgba(0,255,65,.10);border:1px solid var(--neon-dim);color:var(--neon-green);padding:4px 14px;border-radius:4px;text-shadow:var(--glow-green);font-weight:700;letter-spacing:3px">EFEAL-GG-2026</span>`},
+    {},
+    {text:`  ${h('Bana e-posta atarken bu kodu','c-white')} ${h('KONU BAŞLIĞINA','c-amber')} ${h('yaz.','c-white')}`},
+    {text:`  ${h('Böylece 2 oyunu da geçtiğini hemen anlar,','c-muted')}`},
+    {text:`  ${h('mesajına öncelik verir, çabuk cevap veririm.','c-muted')}`},
+    {},
+    {text:`  <span class="c-amber">${CI.mail}E-posta :</span> <span class="c-cyan" style="text-decoration:underline;cursor:pointer" onclick="copyContact('efealginn@gmail.com',this)">efealginn@gmail.com</span> ${h('(tıkla → kopyala)','c-muted')}`},
+    {text:`  <span class="c-amber">${CI.discord}Discord :</span> <span class="c-cyan" style="text-decoration:underline;cursor:pointer" onclick="copyContact('efealgin',this)">efealgin</span> ${h('(tıkla → kopyala)','c-muted')}`},
+    {},
+    {text:`  ${h('Sadece buraya ulaşanlar için bu erişim var.','c-green')}`},
+    {},
+  ]);
+}
+
+/* ════════════════════════════════════════
+   GAME ENGINE
+════════════════════════════════════════ */
+let activeGame = null;
+let beaten = { dash: false, boss: false };
+let gameRAF  = null;
+const gKeys  = {};   // live key state for boss fight
+let dashJump = null; // game 1 zıplama callback'i (global tuş yöneticisi çağırır)
+
+const gOverlay  = document.getElementById('game-overlay');
+const gCanvas   = document.getElementById('game-canvas');
+const gTitle    = document.getElementById('gh-title');
+const gScore    = document.getElementById('gh-score');
+const gLives    = document.getElementById('gh-lives');
+const gMsg      = document.getElementById('game-msg');
+const gControls = document.getElementById('gh-controls');
+
+function openOverlay(title, controls, livesText){
+  gCanvas.width  = window.innerWidth;
+  gCanvas.height = window.innerHeight - 72;
+  gTitle.textContent    = title;
+  gControls.innerHTML   = controls;
+  gLives.textContent    = livesText || '';
+  gScore.textContent    = '';
+  gMsg.textContent      = '';
+  gOverlay.classList.add('active');
+  input.blur();
+}
+
+function closeOverlay(){
+  gOverlay.classList.remove('active');
+  if(gameRAF){ cancelAnimationFrame(gameRAF); gameRAF=null; }
+  activeGame = null;
+  setTimeout(()=>input.focus(), 100);
+}
+
+function setMsg(text, color='#00FF41'){
+  gMsg.style.color = color;
+  gMsg.textContent = text;
+}
+
+/* ── GAME 1: NEON DASH ── */
+function startDash(){
+  activeGame = 'dash';
+  openOverlay('NEON DASH', '<b>SPACE/↑</b> — Zıpla', '');
+
+  const ctx = gCanvas.getContext('2d');
+  const W = gCanvas.width, H = gCanvas.height;
+  const GROUND = H * 0.73;
+  const PS = 30, GRAV = 0.58, JVEL = -15.5;
+  const WIN_MS = 35000;
+
+  let p = { x:W*.15, y:GROUND-PS, vy:0, rot:0, onGround:true };
+  let obs = [], parts = [], deathParts = [];
+  let speed = 4.5, frame = 0, bgOff = 0;
+  let alive = true, won = false, dead = false;
+  let spawnTimer = 110, startTime = Date.now();
+
+  // zıplama — hem klavye (global tuş yöneticisi) hem fare/dokunma
+  const doJump = () => { if(p.onGround && alive){ p.vy=JVEL; p.onGround=false; } };
+  dashJump = doJump;
+  const onClick = doJump;
+  gCanvas.addEventListener('click', onClick);
+
+  // Parkur şablonları — çoğu kolay, zorlar nadir (çeşitlilik için bol seçenek)
+  const TEMPLATES = [
+    [{t:'spike',x:0,w:26,h:26}],                                                   // tek diken
+    [{t:'spike',x:0,w:26,h:26}],                                                   // (kolaylar daha sık çıksın)
+    [{t:'block',x:0,w:30,h:28}],                                                   // kısa blok
+    [{t:'block',x:0,w:30,h:28}],
+    [{t:'spike',x:0,w:24,h:24},{t:'spike',x:34,w:24,h:24}],                        // ikili diken
+    [{t:'block',x:0,w:48,h:28}],                                                   // geniş kısa blok
+    [{t:'spike',x:0,w:24,h:24},{t:'spike',x:72,w:24,h:24}],                        // aralıklı iki diken
+    [{t:'block',x:0,w:30,h:28},{t:'spike',x:40,w:24,h:24}],                        // blok + diken
+    [{t:'block',x:0,w:28,h:30},{t:'block',x:56,w:28,h:30}],                        // iki ayrı blok
+    [{t:'block',x:0,w:30,h:48}],                                                   // yüksek blok (zor, nadir)
+    [{t:'spike',x:0,w:24,h:24},{t:'spike',x:30,w:24,h:24},{t:'spike',x:60,w:24,h:24}], // üçlü diken (zor, nadir)
+  ];
+
+  function spawn(){
+    const tpl = TEMPLATES[Math.floor(Math.random()*TEMPLATES.length)];
+    tpl.forEach(o=>{
+      obs.push({t:o.t, x:W+50+o.x, y:GROUND-o.h, w:o.w, h:o.h});
+    });
+  }
+
+  function explode(x,y,col){
+    for(let i=0;i<18;i++){
+      const a=(Math.PI*2/18)*i;
+      deathParts.push({x,y,vx:Math.cos(a)*(3+Math.random()*5),vy:Math.sin(a)*(3+Math.random()*5),life:1,s:3+Math.random()*5,col});
+    }
+  }
+
+  function hit(o){
+    const px=p.x+4,py=p.y+4,pw=PS-8,ph=PS-8;
+    if(o.t==='spike'){
+      return px<o.x+o.w-4&&px+pw>o.x+4&&py+ph>o.y+o.h*.5&&py<o.y+o.h;
+    }
+    return px<o.x+o.w&&px+pw>o.x&&py<o.y+o.h&&py+ph>o.y;
+  }
+
+  function loop(){
+    if(activeGame!=='dash') return;
+    const now=Date.now(), elapsed=now-startTime;
+    ctx.clearRect(0,0,W,H);
+
+    // bg
+    ctx.fillStyle='#080808'; ctx.fillRect(0,0,W,H);
+    bgOff=(bgOff-speed*.4)%64;
+    ctx.strokeStyle='rgba(0,255,65,.035)'; ctx.lineWidth=1;
+    for(let x=bgOff;x<W;x+=64){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=64){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // ground line
+    ctx.shadowBlur=12; ctx.shadowColor='#00FF41';
+    ctx.strokeStyle='#00FF41'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(0,GROUND); ctx.lineTo(W,GROUND); ctx.stroke();
+    ctx.shadowBlur=0;
+
+    if(alive){
+      frame++; speed=Math.min(9,4.5+frame*.0015);
+
+      // physics
+      p.vy+=GRAV; p.y+=p.vy;
+      if(p.y>=GROUND-PS){ p.y=GROUND-PS; p.vy=0; p.onGround=true; }
+      p.rot+=0.08;
+
+      // spawn timer
+      spawnTimer--;
+      if(spawnTimer<=0){ spawn(); spawnTimer=Math.max(68, 110-frame*.012); }
+
+      // move obs
+      for(let i=obs.length-1;i>=0;i--){
+        obs[i].x-=speed;
+        if(obs[i].x<-80) obs.splice(i,1);
+      }
+
+      // draw obs
+      obs.forEach(o=>{
+        ctx.save(); ctx.shadowBlur=10; ctx.shadowColor='#FF4500';
+        if(o.t==='spike'){
+          ctx.fillStyle='#FF4500';
+          ctx.beginPath(); ctx.moveTo(o.x+o.w/2,o.y); ctx.lineTo(o.x+o.w,o.y+o.h); ctx.lineTo(o.x,o.y+o.h); ctx.closePath(); ctx.fill();
+        } else {
+          ctx.fillStyle='#CC3300'; ctx.fillRect(o.x,o.y,o.w,o.h);
+          ctx.strokeStyle='#FF5500'; ctx.lineWidth=1; ctx.strokeRect(o.x,o.y,o.w,o.h);
+        }
+        ctx.restore();
+      });
+
+      // trail
+      if(frame%2===0) parts.push({x:p.x+PS/2,y:p.y+PS/2,vx:-speed*.25,vy:(Math.random()-.5)*1.5,life:1,s:3+Math.random()*3});
+      for(let i=parts.length-1;i>=0;i--){
+        const pt=parts[i]; pt.x+=pt.vx; pt.y+=pt.vy; pt.life-=.06;
+        if(pt.life<=0){parts.splice(i,1);continue;}
+        ctx.save(); ctx.globalAlpha=pt.life*.5; ctx.fillStyle='#00FF41';
+        ctx.shadowBlur=5; ctx.shadowColor='#00FF41';
+        ctx.fillRect(pt.x-pt.s/2,pt.y-pt.s/2,pt.s,pt.s); ctx.restore();
+      }
+
+      // player
+      ctx.save();
+      ctx.translate(p.x+PS/2,p.y+PS/2); ctx.rotate(p.rot);
+      ctx.shadowBlur=22; ctx.shadowColor='#00FF41';
+      ctx.strokeStyle='#00FF41'; ctx.lineWidth=2;
+      ctx.fillStyle='rgba(0,255,65,.12)';
+      ctx.fillRect(-PS/2,-PS/2,PS,PS); ctx.strokeRect(-PS/2,-PS/2,PS,PS);
+      ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.moveTo(-PS/4,0); ctx.lineTo(PS/4,0); ctx.moveTo(0,-PS/4); ctx.lineTo(0,PS/4); ctx.stroke();
+      ctx.restore();
+
+      // collision
+      if(obs.some(o=>hit(o))){
+        alive=false; dead=true;
+        explode(p.x+PS/2,p.y+PS/2,'#FF4500');
+      }
+
+      // win
+      if(elapsed>=WIN_MS){ alive=false; won=true; explode(p.x+PS/2,p.y+PS/2,'#00FF41'); }
+
+      // HUD
+      const pct=Math.min(100,(elapsed/WIN_MS)*100);
+      gScore.textContent=`${pct.toFixed(1)}%  |  ${Math.floor(elapsed/1000)}s / 35s  |  ×${speed.toFixed(1)}`;
+    } else {
+      // death/win particles
+      let any=false;
+      for(let i=deathParts.length-1;i>=0;i--){
+        const dp=deathParts[i];
+        dp.x+=dp.vx; dp.y+=dp.vy; dp.vy+=.18; dp.life-=.018;
+        if(dp.life<=0){deathParts.splice(i,1);continue;}
+        any=true;
+        ctx.save(); ctx.globalAlpha=dp.life;
+        ctx.fillStyle=dp.col; ctx.shadowBlur=12; ctx.shadowColor=dp.col;
+        ctx.beginPath(); ctx.arc(dp.x,dp.y,dp.s,0,Math.PI*2); ctx.fill(); ctx.restore();
+      }
+      if(!any){
+        if(won){
+          beaten.dash=true;
+          gCanvas.removeEventListener('click',onClick);
+          setMsg(beaten.boss?'TAMAMLANDI!\n"secret" komutunu dene!':'TAMAMLANDI!\nŞimdi "game 2" ile boss\'u yen!','#00FF41');
+          return;
+        } else {
+          // restart
+          gCanvas.removeEventListener('click',onClick);
+          startDash(); return;
+        }
+      }
+    }
+    gameRAF=requestAnimationFrame(loop);
+  }
+  spawn(); gameRAF=requestAnimationFrame(loop);
+}
+
+/* ── GAME 2: TERMINAL BREACH (Boss Fight) ── */
+function startBoss(){
+  activeGame='boss';
+  openOverlay('TERMINAL BREACH','<b>← →</b> Hareket  <b>SPACE</b> Ateş','♥ ♥ ♥');
+
+  const ctx=gCanvas.getContext('2d');
+  const W=gCanvas.width, H=gCanvas.height;
+
+  // Player
+  const PSIZE=28, PSPEED=6;
+  let pl={x:W/2, y:H-80, lives:3, iframes:0, bullets:[], shotTimer:0};
+
+  // Boss
+  let boss={
+    x:W/2, y:90, hp:300, maxHp:300,
+    vx:2, phase:1,
+    bullets:[], shotTimer:120,
+    W:100, H:60,
+    shakeX:0, shakeY:0,
+    hitFlash:0,
+  };
+
+  let frame=0, gameOver=false, victory=false;
+  let expParts=[];
+
+  function bossColor(){
+    if(boss.phase===1) return '#FF4500';
+    if(boss.phase===2) return '#FF0000';
+    return '#BF00FF';
+  }
+
+  function updateLivesHUD(){ gLives.textContent='♥'.repeat(pl.lives)+' '.repeat(3-pl.lives); }
+
+  function shootBoss(){
+    const bx=boss.x, by=boss.y+boss.H;
+    const px=pl.x, py=pl.y;
+    const angle=Math.atan2(py-by,px-bx);
+
+    if(boss.phase===1){
+      boss.bullets.push({x:bx,y:by,vx:Math.cos(angle)*3.2,vy:Math.sin(angle)*3.2,r:5});
+    } else if(boss.phase===2){
+      [-0.3,0,0.3].forEach(off=>{
+        boss.bullets.push({x:bx,y:by,vx:Math.cos(angle+off)*4,vy:Math.sin(angle+off)*4,r:5});
+      });
+    } else {
+      [-0.3,0,0.3].forEach(off=>{
+        boss.bullets.push({x:bx,y:by,vx:Math.cos(angle+off)*5,vy:Math.sin(angle+off)*5,r:5});
+      });
+      // extra aimed
+      boss.bullets.push({x:bx,y:by,vx:Math.cos(angle)*6,vy:Math.sin(angle)*6,r:6});
+    }
+  }
+
+  function spawnExplosion(x,y,col,n){
+    for(let i=0;i<n;i++){
+      const a=Math.random()*Math.PI*2, spd=2+Math.random()*6;
+      expParts.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:1,s:2+Math.random()*5,col});
+    }
+  }
+
+  function loop(){
+    if(activeGame!=='boss') return;
+    frame++;
+    ctx.clearRect(0,0,W,H);
+
+    // bg
+    ctx.fillStyle='#060606'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(191,0,255,.04)'; ctx.lineWidth=1;
+    for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    if(!gameOver&&!victory){
+      // player movement
+      if(gKeys['ArrowLeft']||gKeys['a']) pl.x=Math.max(PSIZE,pl.x-PSPEED);
+      if(gKeys['ArrowRight']||gKeys['d']) pl.x=Math.min(W-PSIZE,pl.x+PSPEED);
+
+      // player shoot
+      pl.shotTimer--;
+      if((gKeys[' ']||gKeys['z'])&&pl.shotTimer<=0){
+        pl.bullets.push({x:pl.x,y:pl.y-PSIZE/2,vy:-11});
+        pl.shotTimer=8;
+      }
+
+      // move player bullets
+      for(let i=pl.bullets.length-1;i>=0;i--){
+        pl.bullets[i].y+=pl.bullets[i].vy;
+        if(pl.bullets[i].y<-20) pl.bullets.splice(i,1);
+      }
+
+      // player bullet vs boss
+      for(let i=pl.bullets.length-1;i>=0;i--){
+        const b=pl.bullets[i];
+        const bLeft=boss.x-boss.W/2, bRight=boss.x+boss.W/2;
+        const bTop=boss.y-boss.H/2, bBot=boss.y+boss.H/2;
+        if(b.x>bLeft&&b.x<bRight&&b.y>bTop&&b.y<bBot){
+          pl.bullets.splice(i,1);
+          boss.hp=Math.max(0,boss.hp-7);
+          boss.hitFlash=4;
+          boss.shakeX=(Math.random()-.5)*6;
+          boss.shakeY=(Math.random()-.5)*4;
+          spawnExplosion(b.x,b.y,'#00FF41',4);
+          // phase change
+          const newPhase=boss.hp>200?1:boss.hp>100?2:3;
+          if(newPhase!==boss.phase){
+            boss.phase=newPhase;
+            boss.vx*=1.35;
+            spawnExplosion(boss.x,boss.y,bossColor(),30);
+            setMsg(newPhase===2?'PHASE 2!':newPhase===3?'RAGE MODE!':'','#FF4500');
+            setTimeout(()=>setMsg('',''),2000);
+          }
+        }
+      }
+
+      // boss movement
+      boss.x+=boss.vx;
+      if(boss.x>W-boss.W/2-20||boss.x<boss.W/2+20) boss.vx*=-1;
+      if(boss.phase===3&&frame%80<40) boss.x+=Math.sin(frame*.15)*3;
+
+      // boss shake decay
+      boss.shakeX*=.8; boss.shakeY*=.8;
+
+      // boss shoot timer
+      const shotInterval=boss.phase===1?150:boss.phase===2?110:75;
+      boss.shotTimer--;
+      if(boss.shotTimer<=0){ shootBoss(); boss.shotTimer=shotInterval; }
+
+      // move boss bullets
+      for(let i=boss.bullets.length-1;i>=0;i--){
+        const bb=boss.bullets[i];
+        bb.x+=bb.vx; bb.y+=bb.vy;
+        if(bb.x<-20||bb.x>W+20||bb.y>H+20||bb.y<-20) boss.bullets.splice(i,1);
+      }
+
+      // boss bullet vs player
+      if(pl.iframes<=0){
+        for(let i=boss.bullets.length-1;i>=0;i--){
+          const bb=boss.bullets[i];
+          if(Math.abs(bb.x-pl.x)<PSIZE*.55&&Math.abs(bb.y-pl.y)<PSIZE*.55){
+            boss.bullets.splice(i,1);
+            pl.lives--;
+            pl.iframes=120;
+            updateLivesHUD();
+            spawnExplosion(pl.x,pl.y,'#FF0000',15);
+            if(pl.lives<=0){ gameOver=true; spawnExplosion(pl.x,pl.y,'#FF0000',40); }
+          }
+        }
+      } else { pl.iframes--; }
+
+      // win check
+      if(boss.hp<=0){ victory=true; spawnExplosion(boss.x,boss.y,bossColor(),60); }
+
+      // draw boss HP bar
+      const barW=Math.min(W*.6,400), barX=(W-barW)/2, barY=18;
+      ctx.fillStyle='#1a0000'; ctx.fillRect(barX,barY,barW,12);
+      const hpFill=(boss.hp/boss.maxHp)*barW;
+      const barCol=boss.phase===1?'#FF4500':boss.phase===2?'#FF0000':'#BF00FF';
+      ctx.fillStyle=barCol; ctx.shadowBlur=8; ctx.shadowColor=barCol;
+      ctx.fillRect(barX,barY,hpFill,12); ctx.shadowBlur=0;
+      ctx.strokeStyle=barCol; ctx.lineWidth=1; ctx.strokeRect(barX,barY,barW,12);
+      ctx.fillStyle='#fff'; ctx.font='10px JetBrains Mono';
+      ctx.textAlign='center'; ctx.fillText(`BOSS HP  ${boss.hp}/300  [PHASE ${boss.phase}]`,W/2,barY+22);
+
+      // draw boss — UZAY İSTİLACISI (space invader) pixel sprite
+      const bx=boss.x+boss.shakeX, by=boss.y+boss.shakeY;
+      const flash = boss.hitFlash>0;
+      const invCol = flash ? '#ffffff' : bossColor();
+      // 11x8 klasik "crab" istilacı; bacaklar her ~20 karede animasyonlu
+      const legUp = Math.floor(frame/18)%2===0;
+      const INV = legUp
+        ? ['00100000100','00010001000','00111111100','01101110110','11111111111','10111111101','10100000101','00011011000']
+        : ['00100000100','10010001001','10111111101','11101110111','11111111111','01111111110','00100000100','01000000010'];
+      const ICOLS=11, IROWS=8, cw=boss.W/ICOLS, ch=boss.H/IROWS;
+      ctx.save();
+      ctx.shadowBlur=flash?28:16; ctx.shadowColor=invCol; ctx.fillStyle=invCol;
+      for(let r=0;r<IROWS;r++) for(let c=0;c<ICOLS;c++){
+        if(INV[r][c]==='1') ctx.fillRect(bx-boss.W/2+c*cw, by-boss.H/2+r*ch, Math.ceil(cw)+0.5, Math.ceil(ch)+0.5);
+      }
+      ctx.restore();
+      if(boss.hitFlash>0) boss.hitFlash--;
+      // gözler (beyaz parlak — istilacının göz boşluklarına)
+      ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#fff'; ctx.fillStyle='#fff';
+      ctx.fillRect(bx-boss.W/2+3*cw, by-boss.H/2+3*ch, cw, ch);
+      ctx.fillRect(bx-boss.W/2+7*cw, by-boss.H/2+3*ch, cw, ch);
+      ctx.restore();
+
+      // draw boss bullets
+      boss.bullets.forEach(bb=>{
+        ctx.save();
+        ctx.shadowBlur=10; ctx.shadowColor=barCol;
+        ctx.fillStyle=barCol;
+        ctx.beginPath(); ctx.arc(bb.x,bb.y,bb.r||5,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      });
+
+      // draw player — GALAGA tarzı uzay gemisi (bizim karakter)
+      const blink = pl.iframes>0 && Math.floor(pl.iframes/5)%2===0;
+      if(!blink){
+        ctx.save();
+        ctx.translate(pl.x, pl.y);
+        // motor alevi (titreşen)
+        ctx.fillStyle='#FFB300'; ctx.shadowBlur=10; ctx.shadowColor='#FFB300';
+        ctx.beginPath();
+        ctx.moveTo(-4,PSIZE*.5); ctx.lineTo(0,PSIZE*.5+7+Math.random()*5); ctx.lineTo(4,PSIZE*.5); ctx.closePath(); ctx.fill();
+        // gövde
+        ctx.shadowBlur=16; ctx.shadowColor='#00FF41'; ctx.fillStyle='#00FF41';
+        ctx.beginPath();
+        ctx.moveTo(0,-PSIZE);
+        ctx.lineTo(-5,-PSIZE*.2);
+        ctx.lineTo(-5,PSIZE*.5);
+        ctx.lineTo(5,PSIZE*.5);
+        ctx.lineTo(5,-PSIZE*.2);
+        ctx.closePath(); ctx.fill();
+        // kanatlar
+        ctx.beginPath();
+        ctx.moveTo(-5,0); ctx.lineTo(-PSIZE*.95,PSIZE*.55); ctx.lineTo(-5,PSIZE*.35); ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(5,0); ctx.lineTo(PSIZE*.95,PSIZE*.55); ctx.lineTo(5,PSIZE*.35); ctx.closePath(); ctx.fill();
+        // kokpit (cyan)
+        ctx.fillStyle='#00FFFF'; ctx.shadowColor='#00FFFF'; ctx.shadowBlur=8;
+        ctx.beginPath(); ctx.arc(0,-PSIZE*.25,3.2,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+
+      // draw player bullets
+      pl.bullets.forEach(b=>{
+        ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#00FF41';
+        ctx.strokeStyle='#00FF41'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x,b.y+14); ctx.stroke();
+        ctx.restore();
+      });
+
+      gScore.textContent=`HP: ${boss.hp}/300  |  Phase: ${boss.phase}`;
+    }
+
+    // explosion particles
+    for(let i=expParts.length-1;i>=0;i--){
+      const ep=expParts[i];
+      ep.x+=ep.vx; ep.y+=ep.vy; ep.vy+=.1; ep.life-=.022;
+      if(ep.life<=0){expParts.splice(i,1);continue;}
+      ctx.save(); ctx.globalAlpha=ep.life;
+      ctx.fillStyle=ep.col; ctx.shadowBlur=8; ctx.shadowColor=ep.col;
+      ctx.beginPath(); ctx.arc(ep.x,ep.y,ep.s,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    if(gameOver&&expParts.length===0){
+      setMsg('GAME OVER\nESC → Çık  |  game 2 → Tekrar dene','#FF3131');
+      return;
+    }
+    if(victory&&expParts.length===0){
+      beaten.boss=true;
+      setMsg(beaten.dash?'BOSS YENİLDİ!\n"secret" komutunu dene!':'BOSS YENİLDİ!\nŞimdi "game 1" ile dash\'i geç!','#00FF41');
+      return;
+    }
+
+    gameRAF=requestAnimationFrame(loop);
+  }
+
+  updateLivesHUD();
+  gameRAF=requestAnimationFrame(loop);
+}
+
+/* ── GAME COMMAND ROUTER ── */
+function cmdGame(args){
+  const n=args[0];
+  if(n==='1'||n==='dash') { startDash(); return; }
+  if(n==='2'||n==='boss') { startBoss(); return; }
+  cmdGames();
+}
+
+/* ── GLOBAL GAME KEYS ── */
+document.addEventListener('keydown', e=>{
+  if(activeGame){
+    gKeys[e.key]=true;
+    if(e.key==='Escape') closeOverlay();
+    if(activeGame==='dash'&&(e.key===' '||e.key==='ArrowUp')){
+      e.preventDefault();
+      if(dashJump) dashJump();
+    }
+    if(activeGame==='boss'&&(e.key===' '||e.key==='ArrowLeft'||e.key==='ArrowRight')) e.preventDefault();
+    return;
+  }
+});
+document.addEventListener('keyup', e=>{ gKeys[e.key]=false; });
+
+const COMMANDS = {
+  help:cmdHelp, whoami:cmdWhoami, skills:cmdSkills, projects:cmdProjects,
+  contact:cmdContact, edu:cmdEdu, ls:cmdLs, clear:cmdClear, banner:cmdBanner,
+  date:cmdDate, echo:cmdEcho, sudo:cmdSudo, neofetch:cmdNeofetch, cv:cmdCv,
+  photo:cmdPhoto, learn:cmdLearn, games:cmdGames, game:cmdGame, secret:cmdSecret, chat:cmdChat,
+};
+
+/* ════════════════════════════════════════
+   BOOT SEQUENCE
+════════════════════════════════════════ */
+function boot(){
+  printBlock([
+    {text:`  ${h('[  INIT  ]','c-muted')} ${h('efeal-portfolio.service','c-green')}`, pause:60},
+    {text:`  ${h('[   OK   ]','c-dim')} ${h('Loaded: whoami.service','c-muted')}`,    pause:50},
+    {text:`  ${h('[   OK   ]','c-dim')} ${h('Loaded: skills.service','c-muted')}`,    pause:50},
+    {text:`  ${h('[   OK   ]','c-dim')} ${h('Loaded: projects.service','c-muted')}`,  pause:50},
+    {text:`  ${h('[   OK   ]','c-dim')} ${h('Loaded: contact.service','c-muted')}`,   pause:50},
+    {text:`  ${h('[   OK   ]','c-dim')} ${h('Loaded: matrix.service','c-muted')}`,    pause:60},
+    {text:`  ${h('[  DONE  ]','c-green')} ${h('Portfolio online.','c-white')}`,       pause:110},
+    {},
+  ], ()=>{
+    printBanner();
+    printBlock([
+      {text:`  ${h('Hoş geldiniz!','c-white')} ${h('Portfolyo terminaline bağlandınız.','c-muted')}`},
+      {},
+      {text:`  ${h('Efe Algın','c-amber')} ${h('—','c-muted')} ${h('BM Öğrencisi · Balıkesir Üniversitesi','c-white')}`},
+      {text:`  ${h('Backend · C# · .NET · Python','c-muted')}`},
+      {},
+      {text:`  Komutlar için ${h('help','c-cyan')} yaz. Hızlı: ${h('whoami','c-cyan')} · ${h('projects','c-cyan')} · ${h('learn','c-cyan')} · ${h('chat','c-cyan')}`},
+      {},
+    ], ()=>{ input.focus(); });
+  });
+}
+
+/* ════════════════════════════════════════
+   INPUT HANDLING
+════════════════════════════════════════ */
+let history=[], histIdx=-1;
+
+function echoPrompt(cmd){
+  const row = document.createElement('div');
+  row.className = 'line prompt-line';
+  row.innerHTML = `<span class="ps1"><span class="u">efeal</span><span class="at">@</span><span class="h">portfolio</span><span class="s">:</span><span class="p">~</span><span class="d">$</span></span> <span class="cmd-echo">${esc(cmd)}</span>`;
+  term.appendChild(row);
+}
+
+function runCommand(raw){
+  const trimmed = raw.trim();
+  if(!trimmed) return;
+  echoPrompt(trimmed);
+  if(history[0] !== trimmed) history.unshift(trimmed);
+  histIdx = -1;
+  const parts = trimmed.split(/\s+/);
+  const cmd   = parts[0].toLowerCase();
+  const args  = parts.slice(1);
+  if(COMMANDS[cmd]) COMMANDS[cmd](args);
+  else cmdNotFound(cmd);
+  scrollBottom();
+}
+
+input.addEventListener('keydown', e=>{
+  // Chat modu: girdiyi komut yerine mesaj olarak yönlendir
+  if(chatState !== 'off'){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const v=input.value; input.value='';
+      if(chatState==='nick'){ if(v.trim()) echoPrompt(v); chatSetNick(v); }
+      else chatSend(v);
+    } else if(e.key==='Escape'){ e.preventDefault(); chatLeave(); }
+    return;
+  }
+  if(e.key==='Enter'){
+    const v=input.value; input.value=''; runCommand(v);
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(histIdx < history.length-1) input.value = history[++histIdx];
+  } else if(e.key==='ArrowDown'){
+    e.preventDefault();
+    histIdx>0 ? (input.value=history[--histIdx]) : (histIdx=-1, input.value='');
+  } else if(e.key==='Tab'){
+    e.preventDefault();
+    const v=input.value.trim().toLowerCase(); if(!v) return;
+    const m=Object.keys(COMMANDS).filter(k=>k.startsWith(v));
+    if(m.length===1) input.value=m[0];
+    else if(m.length>1){ echoPrompt(input.value); appendLine('  '+m.join('   '),'c-white'); scrollBottom(); }
+  } else if(e.ctrlKey && e.key==='l'){ e.preventDefault(); cmdClear(); }
+  else if(e.ctrlKey && e.key==='m'){ e.preventDefault(); cmdMatrix(); }
+  else if(e.ctrlKey && e.key==='c'){
+    input.value='';
+    appendLine(`<span class="ps1"><span class="u">efeal</span><span class="at">@</span><span class="h">portfolio</span><span class="s">:</span><span class="p">~</span><span class="d">$</span></span> ^C`);
+    scrollBottom();
+  }
+});
+
+// Focus on click
+document.getElementById('terminal').addEventListener('click', ()=>input.focus());
+document.getElementById('window').addEventListener('click',   ()=>input.focus());
+
+// Mobile quick commands
+document.querySelectorAll('.qcmd').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ runCommand(btn.dataset.cmd); input.value=''; input.focus(); });
+});
+
+/* ════════════════════════════════════════
+   START
+════════════════════════════════════════ */
+boot();
+
+// Matrix modu açılışta aktif gelir — kapatmak için: matrix  (veya Ctrl+M)
+matrixOn = true;
+window.__matrixStart();
+</script>
+</body>
+</html>
