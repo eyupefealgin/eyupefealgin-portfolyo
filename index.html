@@ -1636,7 +1636,7 @@ function cmdGames(){
     {text:`<span class="sec">  ╔══ MİNİ OYUNLAR ════════════════════════════╗</span>`},
     {},
     {text:`  ${h('game 1','c-cyan')}  ${h('→','c-muted')} ${h('NEON DASH','c-amber')}  — Geometry Dash klonu`},
-    {text:`         ${h('Engelleri atla · 35 sn hayatta kal','c-muted')}`},
+    {text:`         ${h('Engelleri atla · 25 sn hayatta kal','c-muted')}`},
     {text:`         ${h('SPACE/↑ = zıpla  |  Tek can','c-white')}`},
     {},
     {text:`  ${h('game 2','c-cyan')}  ${h('→','c-muted')} ${h('TERMINAL BREACH','c-red')} — Boss dövüşü`},
@@ -1771,7 +1771,7 @@ function startDash(){
   const W = gCanvas.width, H = gCanvas.height;
   const GROUND = H * 0.73;
   const PS = 30, GRAV = 0.58, JVEL = -15.5;
-  const WIN_MS = 35000;
+  const WIN_MS = 25000;
 
   let p = { x:W*.15, y:GROUND-PS, vy:0, rot:0, onGround:true };
   let obs = [], parts = [], deathParts = [];
@@ -1903,7 +1903,7 @@ function startDash(){
 
       // HUD
       const pct=Math.min(100,(elapsed/WIN_MS)*100);
-      gScore.textContent=`${pct.toFixed(1)}%  |  ${Math.floor(elapsed/1000)}s / 35s  |  ×${speed.toFixed(1)}`;
+      gScore.textContent=`${pct.toFixed(1)}%  |  ${Math.floor(elapsed/1000)}s / 25s  |  ×${speed.toFixed(1)}`;
     } else {
       // death/win particles
       let any=false;
